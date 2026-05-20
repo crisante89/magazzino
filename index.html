@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Magazzino">
+<meta name="theme-color" content="#0a0a0a">
+<title>Magazzino Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --surface3: #262626;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --accent: #d4a853;
+    --accent2: #b8922d;
+    --green: #4caf7d;
+    --red: #e05c5c;
+    --blue: #5c8fe0;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display:none; min-height:100vh; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* ===== SPLASH / MODE SELECT ===== */
+  #screen-home {
+    background: var(--bg);
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .logo-mark {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px;
+  }
+  .app-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .app-sub { font-size: 14px; color: var(--text2); margin-bottom: 48px; }
+  .mode-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 12px;
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .mode-card:active { transform: scale(0.98); background: var(--surface2); }
+  .mode-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .mode-icon.admin { background: rgba(212,168,83,0.15); }
+  .mode-icon.client { background: rgba(76,175,125,0.15); }
+  .mode-label { font-size: 16px; font-weight: 600; }
+  .mode-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ===== ADMIN PIN ===== */
+  #screen-pin {
+    background: var(--bg);
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .pin-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .pin-sub { font-size: 13px; color: var(--text2); margin-bottom: 36px; }
+  .pin-dots { display:flex; gap:12px; justify-content:center; margin-bottom:36px; }
+  .pin-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    background: transparent; transition: all 0.2s;
+  }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+  .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:280px; }
+  .pin-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    height: 64px;
+    font-size: 22px; font-weight: 500;
+    color: var(--text);
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pin-btn:active { transform: scale(0.93); background: var(--surface3); }
+  .pin-btn.del { font-size: 16px; }
+  .pin-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 18px; }
+  .back-btn {
+    position: absolute; top: 60px; left: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: 13px; color: var(--text2); cursor: pointer;
+  }
+
+  /* ===== ADMIN DASHBOARD ===== */
+  #screen-admin { background: var(--bg); }
+  .topbar {
+    padding: 60px 20px 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .topbar-title { font-size: 20px; font-weight: 700; flex: 1; }
+  .topbar-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px;
+  }
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  }
+  .tab-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 4px;
+    cursor: pointer; font-size: 10px; color: var(--text3);
+    border: none; background: none;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-icon { font-size: 22px; }
+  .admin-content { flex: 1; overflow-y: auto; padding: 16px 16px 120px; }
+
+  /* Stats */
+  .stats-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-value.gold { color: var(--accent); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+
+  /* Search */
+  .search-wrap { position:relative; margin-bottom:16px; }
+  .search-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 40px 11px 14px;
+    font-size: 15px; color: var(--text); outline: none;
+  }
+  .search-input::placeholder { color: var(--text3); }
+  .search-icon { position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:17px; }
+
+  /* Product list */
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--text3); margin-bottom: 10px; padding-left: 2px;
+  }
+  .product-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .product-item:active { transform: scale(0.99); background: var(--surface2); }
+  .product-thumb {
+    width: 46px; height: 46px; border-radius: 10px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 15px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .product-sku { font-size: 11px; color: var(--text2); margin-top: 1px; }
+  .product-meta { display:flex; gap:6px; margin-top:5px; align-items:center; }
+  .stock-badge {
+    font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .stock-badge.ok { background:rgba(76,175,125,0.15); color:var(--green); }
+  .stock-badge.low { background:rgba(224,92,92,0.15); color:var(--red); }
+  .stock-badge.warn { background:rgba(212,168,83,0.15); color:var(--accent); }
+  .product-price { font-size: 14px; font-weight: 600; color: var(--accent); }
+  .product-arrow { color:var(--text3); font-size:18px; }
+
+  /* FAB */
+  .fab {
+    position: fixed; right: 20px; bottom: 90px;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--accent); border: none;
+    font-size: 26px; color: #000; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(212,168,83,0.4);
+    z-index: 30; transition: transform 0.15s;
+  }
+  .fab:active { transform: scale(0.9); }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 100; display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle {
+    width: 36px; height: 4px; background: var(--border2);
+    border-radius: 2px; margin: 0 auto 20px;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+
+  /* Form */
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display:block; }
+  .form-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    font-size: 15px; color: var(--text); outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn-primary {
+    width: 100%; background: var(--accent); border: none;
+    border-radius: var(--radius-sm); padding: 14px;
+    font-size: 16px; font-weight: 600; color: #000; cursor: pointer;
+    margin-top: 8px; transition: all 0.15s;
+  }
+  .btn-primary:active { transform: scale(0.98); background: var(--accent2); }
+  .btn-secondary {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px;
+    font-size: 15px; font-weight: 500; color: var(--text2); cursor: pointer;
+    margin-top: 8px; transition: all 0.15s;
+  }
+  .btn-danger {
+    width: 100%; background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3);
+    border-radius: var(--radius-sm); padding: 12px;
+    font-size: 15px; font-weight: 500; color: var(--red); cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* Product detail in modal */
+  .detail-header {
+    display: flex; gap: 14px; align-items: center; margin-bottom: 20px;
+  }
+  .detail-thumb {
+    width: 60px; height: 60px; border-radius: 14px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; flex-shrink: 0;
+  }
+  .detail-name { font-size: 18px; font-weight: 700; }
+  .detail-sku { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .detail-section { margin-bottom: 20px; }
+  .detail-row {
+    display: flex; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row-label { color: var(--text2); }
+  .detail-row-value { font-weight: 500; }
+
+  /* Move stock controls */
+  .stock-ctrl {
+    display: flex; gap: 10px; align-items: center; margin: 16px 0;
+  }
+  .qty-btn {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 22px; color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .qty-btn:active { background: var(--surface3); }
+  .qty-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px; font-size: 20px; font-weight: 600;
+    color: var(--text); text-align: center; outline: none;
+  }
+  .move-type-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .move-type-btn {
+    padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface2); font-size: 14px; font-weight: 600;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+    color: var(--text2);
+  }
+  .move-type-btn.active.carico { border-color: var(--green); background: rgba(76,175,125,0.1); color: var(--green); }
+  .move-type-btn.active.scarico { border-color: var(--red); background: rgba(224,92,92,0.1); color: var(--red); }
+
+  /* QR section */
+  .qr-wrap {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex; justify-content: center;
+    margin: 16px 0;
+  }
+
+  /* ===== SCANNER TAB ===== */
+  .scanner-wrap {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 20px;
+  }
+  .scanner-frame {
+    width: 100%; border-radius: var(--radius);
+    overflow: hidden; position: relative;
+    background: #000;
+    margin-bottom: 16px;
+  }
+  #html5-qrcode-button-camera-start,
+  #html5-qrcode-button-camera-stop { display:none !important; }
+  .scan-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .scan-corner {
+    position: absolute;
+    width: 180px; height: 180px;
+    border: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .scan-corner::before, .scan-corner::after { content:''; position:absolute; background: var(--accent); border-radius: 2px; }
+  .scan-hint { font-size: 13px; color: var(--text2); text-align:center; }
+  .scan-result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px; width:100%; display:none;
+  }
+
+  /* ===== MOVIMENTI ===== */
+  .move-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .move-indicator {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .move-info { flex: 1; }
+  .move-name { font-size: 14px; font-weight: 600; }
+  .move-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .move-qty { font-size: 14px; font-weight: 700; }
+
+  /* ===== CLIENT SCREEN ===== */
+  #screen-client { background: var(--bg); }
+  .client-topbar {
+    padding: 60px 20px 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .client-content { flex:1; overflow-y:auto; padding: 16px 16px 40px; }
+  .client-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .client-emoji { font-size: 48px; margin-bottom: 12px; }
+  .client-product-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .client-brand { font-size: 13px; color: var(--text2); }
+  .client-price {
+    font-size: 32px; font-weight: 800;
+    color: var(--accent); margin: 16px 0 4px;
+  }
+  .client-avail {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+  }
+  .client-avail.ok { background:rgba(76,175,125,0.15); color:var(--green); }
+  .client-avail.low { background:rgba(212,168,83,0.15); color:var(--accent); }
+  .client-avail.none { background:rgba(224,92,92,0.15); color:var(--red); }
+  .features-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+  }
+  .feature-label { font-size: 10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text3); }
+  .feature-val { font-size: 15px; font-weight: 600; margin-top: 4px; }
+  .desc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px; margin-bottom: 16px;
+  }
+  .desc-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; text-transform:uppercase; letter-spacing:0.4px; }
+  .desc-text { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+  /* Client scanner */
+  .client-scan-section {
+    flex: 1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding: 30px 20px; text-align:center;
+  }
+  .scan-big-icon { font-size: 64px; margin-bottom: 20px; }
+  .scan-big-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .scan-big-sub { font-size: 14px; color: var(--text2); line-height: 1.5; margin-bottom: 32px; }
+  .btn-scan {
+    background: var(--green);
+    border: none; border-radius: var(--radius);
+    padding: 16px 32px; font-size: 16px; font-weight: 700;
+    color: #fff; cursor: pointer; width: 100%;
+    transition: all 0.15s;
+  }
+  .btn-scan:active { transform: scale(0.97); }
+
+  .toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: var(--surface3); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 10px 20px;
+    font-size: 13px; z-index: 999;
+    opacity: 0; transition: opacity 0.3s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Emoji selector */
+  .emoji-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .emoji-opt {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 20px; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; transition:all 0.15s;
+  }
+  .emoji-opt.sel { border-color: var(--accent); background: rgba(212,168,83,0.15); }
+</style>
+</head>
+<body>
+
+<!-- ===== HOME ===== -->
+<div id="screen-home" class="screen active">
+  <div class="logo-mark">📦</div>
+  <div class="app-title">Magazzino Pro</div>
+  <div class="app-sub">Gestione inventario & showroom</div>
+  <div style="width:100%; max-width:360px;">
+    <div class="mode-card" onclick="goTo('pin')">
+      <div class="mode-icon admin">🔐</div>
+      <div>
+        <div class="mode-label">Gestione Magazzino</div>
+        <div class="mode-desc">Carico, scarico, QR code e inventario</div>
+      </div>
+    </div>
+    <div class="mode-card" onclick="goToClient()">
+      <div class="mode-icon client">🛍️</div>
+      <div>
+        <div class="mode-label">Showroom Cliente</div>
+        <div class="mode-desc">Scansiona QR per vedere prodotto</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:11px; color:var(--text3); margin-top:32px; line-height:1.6;">
+    💡 Aggiungi alla schermata Home per usarla come app
+  </div>
+</div>
+
+<!-- ===== PIN ===== -->
+<div id="screen-pin" class="screen">
+  <button class="back-btn" onclick="goTo('home')">← Indietro</button>
+  <div class="pin-title">🔐 Accesso Admin</div>
+  <div class="pin-sub">Inserisci il PIN (default: 1234)</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="dot0"></div>
+    <div class="pin-dot" id="dot1"></div>
+    <div class="pin-dot" id="dot2"></div>
+    <div class="pin-dot" id="dot3"></div>
+  </div>
+  <div class="pin-pad" id="pin-pad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" style="font-size:13px; color:var(--text2);" onclick="pinPress('clr')">✕</button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinPress('del')">⌫</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div id="screen-admin" class="screen">
+  <div class="topbar">
+    <div class="topbar-title" id="admin-tab-title">Inventario</div>
+    <div class="topbar-icon-btn" onclick="goTo('home')" title="Esci">🚪</div>
+  </div>
+
+  <!-- Tab: Inventario -->
+  <div class="admin-content" id="tab-inventario">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Articoli</div>
+        <div class="stat-value gold" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Esauriti</div>
+        <div class="stat-value red" id="stat-low">0</div>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input class="search-input" id="search-input" placeholder="Cerca articolo..." oninput="renderList()">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="section-label">Tutti gli articoli</div>
+    <div id="product-list"></div>
+  </div>
+
+  <!-- Tab: Scanner (admin) -->
+  <div class="admin-content" id="tab-scanner" style="display:none">
+    <div class="scanner-wrap" style="padding:0;">
+      <div class="scanner-frame" id="admin-scanner-frame">
+        <div id="admin-qr-reader"></div>
+      </div>
+      <div class="scan-hint">Inquadra il QR code di un articolo<br>per caricare o scaricare dal magazzino</div>
+      <div class="scan-result" id="admin-scan-result" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Movimenti -->
+  <div class="admin-content" id="tab-movimenti" style="display:none">
+    <div class="section-label">Storico movimenti</div>
+    <div id="movimenti-list"></div>
+  </div>
+
+  <!-- Bottom tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-inventario" onclick="switchTab('inventario')">
+      <span class="tab-icon">📦</span>Inventario
+    </button>
+    <button class="tab-btn" id="tab-btn-scanner" onclick="switchTab('scanner')">
+      <span class="tab-icon">📷</span>Scanner
+    </button>
+    <button class="tab-btn" id="tab-btn-movimenti" onclick="switchTab('movimenti')">
+      <span class="tab-icon">📋</span>Movimenti
+    </button>
+  </div>
+
+  <button class="fab" onclick="openNewProduct()">＋</button>
+</div>
+
+<!-- ===== CLIENT ===== -->
+<div id="screen-client" class="screen">
+  <div class="client-topbar">
+    <div class="topbar-icon-btn" onclick="goTo('home')" title="Indietro">←</div>
+    <div class="topbar-title">Showroom</div>
+  </div>
+  <div class="client-content" id="client-content">
+    <div class="client-scan-section">
+      <div class="scan-big-icon">📸</div>
+      <div class="scan-big-title">Scopri il prodotto</div>
+      <div class="scan-big-sub">Scansiona il QR code esposto<br>nello showroom per vedere<br>caratteristiche, prezzo e disponibilità</div>
+      <button class="btn-scan" onclick="startClientScan()">📷 Scansiona QR Code</button>
+      <div id="client-qr-reader" style="width:100%; margin-top:20px; border-radius:14px; overflow:hidden; display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<!-- New / Edit Product -->
+<div class="modal-overlay" id="modal-product">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-product-title">Nuovo Articolo</div>
+    <div class="form-group">
+      <label class="form-label">Icona articolo</label>
+      <div class="emoji-row" id="emoji-picker">
+        <div class="emoji-opt sel" data-e="📦" onclick="selectEmoji(this)">📦</div>
+        <div class="emoji-opt" data-e="🪑" onclick="selectEmoji(this)">🪑</div>
+        <div class="emoji-opt" data-e="🛋️" onclick="selectEmoji(this)">🛋️</div>
+        <div class="emoji-opt" data-e="🖼️" onclick="selectEmoji(this)">🖼️</div>
+        <div class="emoji-opt" data-e="💡" onclick="selectEmoji(this)">💡</div>
+        <div class="emoji-opt" data-e="🪞" onclick="selectEmoji(this)">🪞</div>
+        <div class="emoji-opt" data-e="🛏️" onclick="selectEmoji(this)">🛏️</div>
+        <div class="emoji-opt" data-e="🚿" onclick="selectEmoji(this)">🚿</div>
+        <div class="emoji-opt" data-e="🪴" onclick="selectEmoji(this)">🪴</div>
+        <div class="emoji-opt" data-e="🔧" onclick="selectEmoji(this)">🔧</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nome articolo *</label>
+      <input class="form-input" id="f-name" placeholder="es. Divano Chester" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Marca / Fornitore</label>
+      <input class="form-input" id="f-brand" placeholder="es. Natuzzi" type="text">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Categoria</label>
+        <input class="form-input" id="f-cat" placeholder="es. Divani" type="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prezzo €</label>
+        <input class="form-input" id="f-price" placeholder="0.00" type="number" step="0.01">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Giacenza iniziale</label>
+        <input class="form-input" id="f-qty" placeholder="0" type="number" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Scorta minima</label>
+        <input class="form-input" id="f-minqty" placeholder="1" type="number" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Colore / Variante</label>
+      <input class="form-input" id="f-color" placeholder="es. Grigio antracite" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dimensioni</label>
+      <input class="form-input" id="f-dims" placeholder="es. 220x90x80 cm" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrizione per i clienti</label>
+      <textarea class="form-input" id="f-desc" placeholder="Descrizione visibile nello showroom..." rows="3" style="resize:none;"></textarea>
+    </div>
+    <button class="btn-primary" onclick="saveProduct()">💾 Salva Articolo</button>
+    <button class="btn-secondary" id="btn-gen-qr" onclick="generateQR()" style="display:none;">🔲 Genera QR Code</button>
+    <button class="btn-danger" id="btn-del-product" onclick="deleteProduct()" style="display:none;">🗑 Elimina Articolo</button>
+    <button class="btn-secondary" onclick="closeModal('modal-product')">Annulla</button>
+  </div>
+</div>
+
+<!-- Product Detail / Stock Move -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-detail-content"></div>
+  </div>
+</div>
+
+<!-- QR Display -->
+<div class="modal-overlay" id="modal-qr">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">QR Code Articolo</div>
+    <div id="qr-product-name" style="font-size:14px; color:var(--text2); margin-bottom:12px;"></div>
+    <div class="qr-wrap" id="qr-display"></div>
+    <div style="font-size:11px; color:var(--text3); text-align:center; margin-top:8px;" id="qr-id-label"></div>
+    <div style="font-size:12px; color:var(--text2); text-align:center; margin-top:12px; line-height:1.5;">
+      📱 Stampa questo QR e applicalo sull'articolo<br>nel magazzino o nello showroom
+    </div>
+    <button class="btn-secondary" onclick="closeModal('modal-qr')">Chiudi</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA =====
+let products = JSON.parse(localStorage.getItem('mgz_products') || '[]');
+let movements = JSON.parse(localStorage.getItem('mgz_movements') || '[]');
+let editingId = null;
+let selectedEmoji = '📦';
+let adminScanner = null;
+let clientScanner = null;
+let currentTab = 'inventario';
+const PIN = '1234';
+let pinStr = '';
+
+// ===== NAVIGATION =====
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  if (screen !== 'admin') stopAllScanners();
+}
+
+function goToClient() {
+  goTo('client');
+  document.getElementById('client-content').innerHTML = `
+    <div class="client-scan-section">
+      <div class="scan-big-icon">📸</div>
+      <div class="scan-big-title">Scopri il prodotto</div>
+      <div class="scan-big-sub">Scansiona il QR code esposto<br>nello showroom per vedere<br>caratteristiche, prezzo e disponibilità</div>
+      <button class="btn-scan" onclick="startClientScan()">📷 Scansiona QR Code</button>
+      <div id="client-qr-reader" style="width:100%; margin-top:20px; border-radius:14px; overflow:hidden; display:none;"></div>
+    </div>`;
+}
+
+// ===== PIN =====
+function pinPress(v) {
+  if (v === 'clr') { pinStr = ''; }
+  else if (v === 'del') { pinStr = pinStr.slice(0,-1); }
+  else if (pinStr.length < 4) { pinStr += v; }
+  updateDots();
+  if (pinStr.length === 4) {
+    if (pinStr === PIN) {
+      document.getElementById('pin-error').textContent = '';
+      pinStr = '';
+      updateDots();
+      goTo('admin');
+      switchTab('inventario');
+    } else {
+      document.getElementById('pin-error').textContent = 'PIN errato. Riprova.';
+      setTimeout(() => { pinStr = ''; updateDots(); document.getElementById('pin-error').textContent = ''; }, 1000);
+    }
+  }
+}
+function updateDots() {
+  for(let i=0;i<4;i++){
+    document.getElementById('dot'+i).classList.toggle('filled', i < pinStr.length);
+  }
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  currentTab = tab;
+  ['inventario','scanner','movimenti'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
+  });
+  document.getElementById('admin-tab-title').textContent =
+    tab==='inventario'?'Inventario': tab==='scanner'?'Scanner QR':'Movimenti';
+  if (tab === 'inventario') { renderList(); renderStats(); }
+  if (tab === 'scanner') startAdminScanner();
+  else stopAdminScanner();
+  if (tab === 'movimenti') renderMovements();
+}
+
+// ===== PRODUCT LIST =====
+function renderStats() {
+  document.getElementById('stat-total').textContent = products.length;
+  document.getElementById('stat-low').textContent = products.filter(p => p.qty <= 0).length;
+}
+
+function renderList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.sku||'').toLowerCase().includes(q) ||
+    (p.category||'').toLowerCase().includes(q)
+  );
+  const html = filtered.map(p => {
+    const badgeCls = p.qty <= 0 ? 'low' : p.qty <= p.minQty ? 'warn' : 'ok';
+    const badgeTxt = p.qty <= 0 ? 'Esaurito' : p.qty <= p.minQty ? `Scorta bassa` : `${p.qty} pz`;
+    return `<div class="product-item" onclick="openDetail('${p.id}')">
+      <div class="product-thumb">${p.emoji||'📦'}</div>
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        <div class="product-sku">${p.sku||''} ${p.category ? '· '+p.category : ''}</div>
+        <div class="product-meta">
+          <span class="stock-badge ${badgeCls}">${badgeTxt}</span>
+          <span class="product-price">${p.price ? '€'+parseFloat(p.price).toFixed(2) : ''}</span>
+        </div>
+      </div>
+      <span class="product-arrow">›</span>
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px;">Nessun articolo trovato.<br>Premi + per aggiungerne uno.</div>';
+  document.getElementById('product-list').innerHTML = html;
+}
+
+// ===== NEW / EDIT =====
+function openNewProduct() {
+  editingId = null;
+  selectedEmoji = '📦';
+  ['name','brand','cat','price','qty','minqty','color','dims','desc'].forEach(f => {
+    const el = document.getElementById('f-'+f);
+    if(el) el.value = '';
+  });
+  document.querySelectorAll('.emoji-opt').forEach(e => {
+    e.classList.toggle('sel', e.dataset.e === '📦');
+  });
+  document.getElementById('modal-product-title').textContent = 'Nuovo Articolo';
+  document.getElementById('btn-gen-qr').style.display = 'none';
+  document.getElementById('btn-del-product').style.display = 'none';
+  openModal('modal-product');
+}
+
+function openEdit(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  selectedEmoji = p.emoji || '📦';
+  document.getElementById('f-name').value = p.name || '';
+  document.getElementById('f-brand').value = p.brand || '';
+  document.getElementById('f-cat').value = p.category || '';
+  document.getElementById('f-price').value = p.price || '';
+  document.getElementById('f-qty').value = p.qty || 0;
+  document.getElementById('f-minqty').value = p.minQty || 1;
+  document.getElementById('f-color').value = p.color || '';
+  document.getElementById('f-dims').value = p.dims || '';
+  document.getElementById('f-desc').value = p.desc || '';
+  document.querySelectorAll('.emoji-opt').forEach(e => {
+    e.classList.toggle('sel', e.dataset.e === selectedEmoji);
+  });
+  document.getElementById('modal-product-title').textContent = 'Modifica Articolo';
+  document.getElementById('btn-gen-qr').style.display = 'block';
+  document.getElementById('btn-del-product').style.display = 'block';
+  closeModal('modal-detail');
+  openModal('modal-product');
+}
+
+function selectEmoji(el) {
+  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedEmoji = el.dataset.e;
+}
+
+function saveProduct() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('⚠️ Inserisci il nome'); return; }
+  const now = new Date();
+  if (editingId) {
+    const p = products.find(x => x.id === editingId);
+    const oldQty = p.qty;
+    p.name = name;
+    p.brand = document.getElementById('f-brand').value.trim();
+    p.category = document.getElementById('f-cat').value.trim();
+    p.price = document.getElementById('f-price').value;
+    p.qty = parseInt(document.getElementById('f-qty').value) || 0;
+    p.minQty = parseInt(document.getElementById('f-minqty').value) || 1;
+    p.color = document.getElementById('f-color').value.trim();
+    p.dims = document.getElementById('f-dims').value.trim();
+    p.desc = document.getElementById('f-desc').value.trim();
+    p.emoji = selectedEmoji;
+    if (p.qty !== oldQty) {
+      addMovement(p.id, p.name, p.qty - oldQty, 'rettifica');
+    }
+  } else {
+    const id = 'ART' + Date.now();
+    const sku = 'SKU-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    const p = {
+      id, sku, name,
+      brand: document.getElementById('f-brand').value.trim(),
+      category: document.getElementById('f-cat').value.trim(),
+      price: document.getElementById('f-price').value,
+      qty: parseInt(document.getElementById('f-qty').value) || 0,
+      minQty: parseInt(document.getElementById('f-minqty').value) || 1,
+      color: document.getElementById('f-color').value.trim(),
+      dims: document.getElementById('f-dims').value.trim(),
+      desc: document.getElementById('f-desc').value.trim(),
+      emoji: selectedEmoji,
+      createdAt: now.toISOString()
+    };
+    products.push(p);
+    editingId = p.id;
+    if (p.qty > 0) addMovement(p.id, p.name, p.qty, 'carico iniziale');
+  }
+  saveData();
+  renderList();
+  renderStats();
+  closeModal('modal-product');
+  showToast('✅ Articolo salvato');
+}
+
+function deleteProduct() {
+  if (!editingId) return;
+  if (!confirm('Eliminare questo articolo?')) return;
+  products = products.filter(x => x.id !== editingId);
+  saveData();
+  renderList();
+  renderStats();
+  closeModal('modal-product');
+  showToast('🗑 Articolo eliminato');
+}
+
+// ===== DETAIL =====
+function openDetail(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const badgeCls = p.qty <= 0 ? 'low' : p.qty <= p.minQty ? 'warn' : 'ok';
+  const badgeTxt = p.qty <= 0 ? 'Esaurito' : p.qty <= p.minQty ? `Scorta bassa (${p.qty})` : `Disponibile: ${p.qty} pz`;
+  document.getElementById('modal-detail-content').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-thumb">${p.emoji||'📦'}</div>
+      <div>
+        <div class="detail-name">${p.name}</div>
+        <div class="detail-sku">${p.sku||''}</div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-row"><span class="detail-row-label">Categoria</span><span class="detail-row-value">${p.category||'—'}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Marca</span><span class="detail-row-value">${p.brand||'—'}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Prezzo</span><span class="detail-row-value" style="color:var(--accent)">${p.price ? '€'+parseFloat(p.price).toFixed(2) : '—'}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Colore</span><span class="detail-row-value">${p.color||'—'}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Dimensioni</span><span class="detail-row-value">${p.dims||'—'}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Giacenza</span><span class="detail-row-value"><span class="stock-badge ${badgeCls}">${badgeTxt}</span></span></div>
+      <div class="detail-row"><span class="detail-row-label">Scorta min.</span><span class="detail-row-value">${p.minQty||1} pz</span></div>
+    </div>
+    <div class="section-label">Movimento magazzino</div>
+    <div class="move-type-row">
+      <div class="move-type-btn carico active" id="move-type-carico" onclick="setMoveType('carico')">📥 Carico</div>
+      <div class="move-type-btn scarico" id="move-type-scarico" onclick="setMoveType('scarico')">📤 Scarico</div>
+    </div>
+    <div class="stock-ctrl">
+      <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+      <input class="qty-input" type="number" id="move-qty" value="1" min="1">
+      <button class="qty-btn" onclick="adjustQty(1)">＋</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (opzionale)</label>
+      <input class="form-input" id="move-note" placeholder="es. Ricezione ordine fornitore">
+    </div>
+    <button class="btn-primary" onclick="applyMove('${p.id}')">✓ Conferma Movimento</button>
+    <button class="btn-secondary" onclick="openEdit('${p.id}')">✏️ Modifica Articolo</button>
+    <button class="btn-secondary" onclick="showQR('${p.id}')">🔲 Mostra QR Code</button>
+    <button class="btn-secondary" onclick="closeModal('modal-detail')">Chiudi</button>
+  `;
+  window._moveType = 'carico';
+  openModal('modal-detail');
+}
+
+function setMoveType(type) {
+  window._moveType = type;
+  document.getElementById('move-type-carico').className = 'move-type-btn carico' + (type==='carico'?' active':'');
+  document.getElementById('move-type-scarico').className = 'move-type-btn scarico' + (type==='scarico'?' active':'');
+}
+
+function adjustQty(d) {
+  const el = document.getElementById('move-qty');
+  el.value = Math.max(1, parseInt(el.value||1) + d);
+}
+
+function applyMove(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const qty = parseInt(document.getElementById('move-qty').value) || 1;
+  const type = window._moveType || 'carico';
+  const note = document.getElementById('move-note').value;
+  if (type === 'scarico' && p.qty < qty) {
+    showToast('⚠️ Giacenza insufficiente'); return;
+  }
+  p.qty = type === 'carico' ? p.qty + qty : p.qty - qty;
+  addMovement(id, p.name, type==='carico'?qty:-qty, note||type);
+  saveData();
+  renderList();
+  renderStats();
+  closeModal('modal-detail');
+  showToast(type==='carico'?`✅ +${qty} pz aggiunti`:`✅ −${qty} pz rimossi`);
+}
+
+// ===== MOVEMENTS =====
+function addMovement(productId, productName, delta, note) {
+  movements.unshift({
+    id: Date.now(),
+    productId, productName, delta, note,
+    date: new Date().toISOString()
+  });
+  if (movements.length > 200) movements = movements.slice(0,200);
+  saveData();
+}
+
+function renderMovements() {
+  const list = document.getElementById('movimenti-list');
+  if (!movements.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 0;font-size:14px;">Nessun movimento registrato.</div>';
+    return;
+  }
+  list.innerHTML = movements.map(m => {
+    const d = new Date(m.date);
+    const dateStr = d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    const isPos = m.delta > 0;
+    return `<div class="move-item">
+      <div class="move-indicator" style="background:${isPos?'var(--green)':'var(--red)'}"></div>
+      <div class="move-info">
+        <div class="move-name">${m.productName}</div>
+        <div class="move-date">${dateStr} · ${m.note||''}</div>
+      </div>
+      <div class="move-qty" style="color:${isPos?'var(--green)':'var(--red)'}">${isPos?'+':''}${m.delta}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== QR CODE =====
+function generateQR() { if(editingId) showQR(editingId); }
+
+function showQR(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  closeModal('modal-detail');
+  closeModal('modal-product');
+  document.getElementById('qr-product-name').textContent = p.name + ' · ' + (p.sku||id);
+  document.getElementById('qr-id-label').textContent = 'ID: ' + id;
+  const container = document.getElementById('qr-display');
+  container.innerHTML = '';
+  const qrData = JSON.stringify({ id: p.id, sku: p.sku, app: 'magazzino-pro' });
+  try {
+    new QRCode(container, {
+      text: qrData,
+      width: 220, height: 220,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    container.innerHTML = '<div style="color:#333;padding:20px;">Errore generazione QR</div>';
+  }
+  openModal('modal-qr');
+}
+
+// ===== SCANNERS =====
+function startAdminScanner() {
+  if (adminScanner) return;
+  const reader = document.getElementById('admin-qr-reader');
+  reader.innerHTML = '';
+  adminScanner = new Html5Qrcode('admin-qr-reader');
+  adminScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    (decoded) => {
+      try {
+        const data = JSON.parse(decoded);
+        if (data.id) {
+          const p = products.find(x => x.id === data.id);
+          if (p) {
+            stopAdminScanner();
+            openDetail(p.id);
+          } else {
+            showToast('⚠️ Articolo non trovato');
+          }
+        }
+      } catch(e) {
+        showToast('⚠️ QR non riconosciuto');
+      }
+    }, () => {}
+  ).catch(() => showToast('⚠️ Fotocamera non disponibile'));
+}
+
+function stopAdminScanner() {
+  if (adminScanner) {
+    adminScanner.stop().catch(()=>{});
+    adminScanner = null;
+  }
+}
+
+function startClientScan() {
+  const readerEl = document.getElementById('client-qr-reader');
+  if (!readerEl) return;
+  readerEl.style.display = 'block';
+  if (clientScanner) { clientScanner.stop().catch(()=>{}); clientScanner = null; }
+  clientScanner = new Html5Qrcode('client-qr-reader');
+  clientScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    (decoded) => {
+      try {
+        const data = JSON.parse(decoded);
+        if (data.id) {
+          const p = products.find(x => x.id === data.id);
+          if (p) {
+            stopClientScanner();
+            showClientProduct(p);
+          } else { showToast('⚠️ Prodotto non trovato'); }
+        }
+      } catch(e) { showToast('⚠️ QR non valido'); }
+    }, () => {}
+  ).catch(() => showToast('⚠️ Fotocamera non disponibile'));
+}
+
+function stopClientScanner() {
+  if (clientScanner) { clientScanner.stop().catch(()=>{}); clientScanner = null; }
+}
+
+function stopAllScanners() { stopAdminScanner(); stopClientScanner(); }
+
+function showClientProduct(p) {
+  const avail = p.qty <= 0 ? ['none','Esaurito','🔴'] :
+                p.qty <= p.minQty ? ['low','Ultimi pezzi','🟡'] : ['ok','Disponibile','🟢'];
+  const features = [];
+  if (p.color) features.push(['Colore', p.color]);
+  if (p.dims) features.push(['Dimensioni', p.dims]);
+  if (p.brand) features.push(['Marca', p.brand]);
+  if (p.category) features.push(['Categoria', p.category]);
+  const featureHtml = features.map(([l,v]) => `
+    <div class="feature-card">
+      <div class="feature-label">${l}</div>
+      <div class="feature-val">${v}</div>
+    </div>`).join('');
+  document.getElementById('client-content').innerHTML = `
+    <div class="client-hero">
+      <div class="client-emoji">${p.emoji||'📦'}</div>
+      <div class="client-product-name">${p.name}</div>
+      <div class="client-brand">${p.brand||''} ${p.category ? '· '+p.category : ''}</div>
+      ${p.price ? `<div class="client-price">€${parseFloat(p.price).toFixed(2)}</div>` : ''}
+      <div class="client-avail ${avail[0]}">${avail[2]} ${avail[1]}</div>
+    </div>
+    ${features.length ? `<div class="features-grid">${featureHtml}</div>` : ''}
+    ${p.desc ? `<div class="desc-card"><div class="desc-title">Descrizione</div><div class="desc-text">${p.desc}</div></div>` : ''}
+    <button class="btn-scan" onclick="goToClient()" style="background:var(--accent);color:#000;">
+      📷 Scansiona un altro prodotto
+    </button>
+  `;
+}
+
+// ===== MODALS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
+});
+
+// ===== UTILS =====
+function saveData() {
+  localStorage.setItem('mgz_products', JSON.stringify(products));
+  localStorage.setItem('mgz_movements', JSON.stringify(movements));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== INIT =====
+if (!products.length) {
+  // Sample data
+  const samples = [
+    { id:'ART001', sku:'SKU-DVCH01', name:'Divano Chester', brand:'Natuzzi', category:'Divani', price:'1890', qty:3, minQty:1, color:'Cognac', dims:'220x90x80 cm', desc:'Divano classico in pelle piena con bottoni capitonné. Struttura in legno massello.', emoji:'🛋️', createdAt:new Date().toISOString() },
+    { id:'ART002', sku:'SKU-LM0201', name:'Lampada Moderna', brand:'Artemide', category:'Illuminazione', price:'340', qty:0, minQty:2, color:'Bianco', dims:'Ø45 cm · H150 cm', desc:'Lampada da terra in alluminio spazzolato con dimmer integrato.', emoji:'💡', createdAt:new Date().toISOString() },
+    { id:'ART003', sku:'SKU-PC1001', name:'Poltrona Capitoné', brand:'Cassina', category:'Poltrone', price:'2200', qty:1, minQty:1, color:'Verde bosco', dims:'80x85x95 cm', desc:'Poltrona in velluto con struttura in acciaio dorato. Design contemporaneo.', emoji:'🪑', createdAt:new Date().toISOString() },
+  ];
+  products = samples;
+  saveData();
+}
+renderStats();
+renderList();
+</script>
+</body>
+</html>
