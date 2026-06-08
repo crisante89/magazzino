@@ -470,7 +470,7 @@ textarea.fi{resize:none;}
     <div class="scan-page">
       <div class="scan-frame"><div id="aqr"></div></div>
       <div class="scan-caption">
-        Inquadra il <strong>QR Shopify</strong> o il <strong>codice a barre</strong> di un articolo<br>
+        Inquadra il <strong>QR code</strong> o il <strong>codice a barre</strong> di un articolo<br>
         per registrare un carico o scarico di magazzino.<br><br>
         Se l'articolo non è ancora collegato, potrai farlo subito.
       </div>
@@ -545,10 +545,10 @@ textarea.fi{resize:none;}
       </div>
     </div>
     <div class="fg">
-      <span class="fl">URL Shopify prodotto</span>
+      <span class="fl">QR Code (URL, testo o codice — opzionale)</span>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input class="fi" id="fu" placeholder="https://tuonegozio.myshopify.com/products/..." style="flex:1;">
-        <button type="button" onclick="openFormScanner('shopify')" style="height:42px;padding:0 13px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);color:var(--t1);font-size:18px;cursor:pointer;flex-shrink:0;">📷</button>
+        <input class="fi" id="fu" placeholder="es. https://... oppure qualsiasi testo/codice" style="flex:1;">
+        <button type="button" onclick="openFormScanner('shopify')" style="height:42px;padding:0 13px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);color:var(--t1);font-size:18px;cursor:pointer;flex-shrink:0;" title="Scansiona QR">📷</button>
       </div>
     </div>
     <button class="btn-p" onclick="saveProd()">💾 Salva Articolo</button>
@@ -726,8 +726,8 @@ function renderList() {
   document.getElementById('plist').innerHTML = list.map(p=>{
     const bc = p.qty<=0?'out': p.qty<=p.minQty?'low':'ok';
     const bt = p.qty<=0?'Esaurito': p.qty<=p.minQty?`Scorta bassa · ${p.qty}`:`${p.qty} pz`;
-    const linked = p.shopifyUrl ? `<span class="badge linked">🔗 Shopify</span>` : `<span class="badge unlinked">Non collegato</span>`;
     const bcBadge = p.barcode ? `<span class="badge" style="background:rgba(92,143,224,.12);color:#5c8fe0;">▌▌ ${p.barcode.slice(-6)}</span>` : '';
+    const qrBadge = p.shopifyUrl ? `<span class="badge" style="background:rgba(92,143,224,.12);color:#5c8fe0;">🔲 QR</span>` : '';
     return `<div class="prod-row" onclick="openDet('${p.id}')">
       <div class="prod-ico ${p.shopifyUrl?'shopify':''}">${p.emoji||'📦'}</div>
       <div class="prod-info">
@@ -735,8 +735,8 @@ function renderList() {
         <div class="prod-meta">${p.sku||''}${p.brand?' · '+p.brand:''}</div>
         <div class="prod-badges">
           <span class="badge ${bc}">${bt}</span>
-          ${linked}
           ${bcBadge}
+          ${qrBadge}
           ${p.price?`<span style="font-size:10px;color:var(--gold);font-weight:600;">€${parseFloat(p.price).toFixed(2)}</span>`:''}
         </div>
       </div>
@@ -1038,11 +1038,11 @@ let formScanMode = null; // 'barcode' | 'shopify'
 function openFormScanner(mode){
   formScanMode = mode;
   document.getElementById('form-scanner-title').textContent =
-    mode==='barcode' ? '📷 Scansiona codice a barre' : '📷 Scansiona QR Shopify';
+    mode==='barcode' ? '📷 Scansiona codice a barre' : '📷 Scansiona QR Code';
   document.getElementById('form-scanner-hint').textContent =
     mode==='barcode'
       ? 'Inquadra il codice a barre EAN / UPC / Code128 dell\'articolo'
-      : 'Inquadra il QR code Shopify del prodotto';
+      : 'Inquadra qualsiasi QR code da associare a questo articolo';
   document.getElementById('fqr').innerHTML='';
   om('m-form-scanner');
   setTimeout(()=>{
@@ -1072,13 +1072,8 @@ function onFormScan(raw){
     document.getElementById('fbar').value = val;
     toast('✅ Codice letto: ' + val);
   } else {
-    if(isShopifyUrl(val)){
-      document.getElementById('fu').value = val;
-      toast('✅ URL Shopify acquisito');
-    } else {
-      toast('⚠️ Non sembra un URL Shopify');
-      return; // non chiudere, riprova
-    }
+    document.getElementById('fu').value = val;
+    toast('✅ QR acquisito');
   }
   closeFormScanner();
 }
@@ -1118,10 +1113,11 @@ function stopScanner(){
 function onScan(raw){
   const val=raw.trim();
 
-  // 1) Cerca per URL Shopify (QR code)
-  if(isShopifyUrl(val)){
-    const found=products.find(p=>p.shopifyUrl && normalizeUrl(p.shopifyUrl)===normalizeUrl(val));
+  // 1) Cerca per QR già collegato
+  if(!isBarcode(val)){
+    const found=products.find(p=>p.shopifyUrl && p.shopifyUrl===val);
     if(found){ stopScanner(); openDet(found.id); return; }
+    // QR non collegato → proponi collegamento
     stopScanner(); pendingUrl=val; pendingBarcode=null;
     openLinkModal('qr', val);
     return;
@@ -1131,14 +1127,16 @@ function onScan(raw){
   const byBar=products.find(p=>p.barcode && p.barcode===val);
   if(byBar){ stopScanner(); openDet(byBar.id); return; }
 
-  // 3) Codice a barre non collegato → proponi collegamento
-  if(/^[\d\w\-]{4,30}$/.test(val)){
+  // 3) Sembra un barcode classico → proponi collegamento come barcode
+  if(isBarcode(val)){
     stopScanner(); pendingBarcode=val; pendingUrl=null;
     openLinkModal('barcode', val);
     return;
   }
 
-  toast('⚠️ Codice non riconosciuto');
+  // 4) QR con testo generico lungo → tratta come QR
+  stopScanner(); pendingUrl=val; pendingBarcode=null;
+  openLinkModal('qr', val);
 }
 
 function normalizeUrl(u){
@@ -1147,6 +1145,10 @@ function normalizeUrl(u){
 }
 function isShopifyUrl(u){
   return u && (u.includes('myshopify.com')||u.includes('/products/'));
+}
+// Un valore è un barcode se è solo cifre/lettere senza spazi e ≤30 chars (no URL, no testo lungo)
+function isBarcode(v){
+  return /^[\d\w\-]{4,30}$/.test(v) && !v.includes('://') && !v.includes(' ');
 }
 
 function openLinkModal(mode, val){
