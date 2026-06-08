@@ -7,8 +7,31 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Magazzino">
 <meta name="theme-color" content="#0d0d0d">
-<title>Magazzino · Shopify</title>
+<title>Magazzino Pro</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, remove, update }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDeH-3iCDlHlXmb93MiA-H7MM-Wij5WbZE",
+  authDomain: "magazzino-pro-9d007.firebaseapp.com",
+  databaseURL: "https://magazzino-pro-9d007-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "magazzino-pro-9d007",
+  storageBucket: "magazzino-pro-9d007.firebasestorage.app",
+  messagingSenderId: "64381794645",
+  appId: "1:64381794645:web:59feb2991c63dd72d7d7dc"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// Rendi disponibili globalmente
+window._fb = { db, ref, set, push, remove, update, onValue };
+window._fbReady = true;
+window.dispatchEvent(new Event('fbready'));
+</script>
 <style>
 :root {
   --bg: #0d0d0d;
@@ -402,7 +425,7 @@ textarea.fi{resize:none;}
 <div id="s-home" class="screen active">
   <div class="brand-ring">🏪</div>
   <div class="home-title">Magazzino Pro</div>
-  <div class="home-sub">Collegato a Shopify</div>
+  <div class="home-sub">Sincronizzato su tutti i dispositivi ☁️</div>
   <button class="enter-btn" onclick="go('main');switchTab('inv')">Accedi al Magazzino</button>
   <div class="pwa-hint">
     📱 Safari → Condividi → Aggiungi a schermata Home<br>per usarla come app
@@ -439,6 +462,7 @@ textarea.fi{resize:none;}
 <div id="s-main" class="screen">
   <div class="topbar">
     <div class="topbar-title" id="ttitle">Inventario</div>
+    <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;transition:background .5s;" title="Stato sync"></div>
     <div class="icon-btn" title="Esci" onclick="go('home')">🚪</div>
   </div>
 
@@ -1206,10 +1230,6 @@ function savePin(){
 }
 
 // ═══════════════ UTILS ═══════════════
-function save(){
-  localStorage.setItem('mgz2_products',JSON.stringify(products));
-  localStorage.setItem('mgz2_movements',JSON.stringify(movements));
-}
 function om(id){ document.getElementById(id).classList.add('open'); }
 function cm(id){ document.getElementById(id).classList.remove('open'); }
 function toast(msg){
@@ -1226,16 +1246,57 @@ document.querySelectorAll('.overlay').forEach(el=>{
   });
 });
 
-// ═══════════════ DEMO DATA ═══════════════
-if(!products.length){
-  products=[
-    {id:'ART001',sku:'SKU-DVCH',name:'Divano Chester',brand:'Natuzzi',category:'Divani',price:'1890',qty:3,minQty:1,color:'Cognac',dims:'220×90×80 cm',emoji:'🛋️',shopifyUrl:'https://tuonegozio.myshopify.com/products/divano-chester',createdAt:new Date().toISOString()},
-    {id:'ART002',sku:'SKU-LM02',name:'Lampada Arco',brand:'Artemide',category:'Illuminazione',price:'340',qty:0,minQty:2,color:'Bianco',dims:'Ø45 · H150 cm',emoji:'💡',shopifyUrl:'',createdAt:new Date().toISOString()},
-    {id:'ART003',sku:'SKU-PC10',name:'Poltrona Capitoné',brand:'Cassina',category:'Poltrone',price:'2200',qty:1,minQty:1,color:'Verde bosco',dims:'80×85×95 cm',emoji:'🪑',shopifyUrl:'https://tuonegozio.myshopify.com/products/poltrona-capito',createdAt:new Date().toISOString()},
-  ];
-  save();
+// ═══════════════ FIREBASE SYNC ═══════════════
+function setSyncDot(state){ // 'ok' | 'saving' | 'off'
+  const dot = document.getElementById('sync-dot');
+  if(!dot) return;
+  dot.style.background = state==='ok' ? 'var(--green)' : state==='saving' ? 'var(--amber)' : 'var(--red)';
+  dot.title = state==='ok' ? 'Sincronizzato' : state==='saving' ? 'Salvataggio...' : 'Offline';
 }
-renderStats(); renderList();
+
+function save(){
+  if(!window._fbReady){ setSyncDot('off'); return; }
+  const {db,ref,set} = window._fb;
+  setSyncDot('saving');
+  Promise.all([
+    set(ref(db,'products'), products.reduce((o,p)=>{ o[p.id]=p; return o; }, {})),
+    set(ref(db,'movements'), movements.reduce((o,m,i)=>{ o['m'+m.id]=m; return o; }, {}))
+  ]).then(()=>setSyncDot('ok')).catch(()=>setSyncDot('off'));
+}
+
+function initFirebase(){
+  const {db, ref, onValue} = window._fb;
+
+  // Ascolta products in tempo reale
+  onValue(ref(db,'products'), snap => {
+    const data = snap.val();
+    products = data ? Object.values(data) : [];
+    renderStats(); renderList();
+    setSyncDot('ok');
+  });
+
+  // Ascolta movements in tempo reale
+  onValue(ref(db,'movements'), snap => {
+    const data = snap.val();
+    movements = data
+      ? Object.values(data).sort((a,b) => b.id - a.id)
+      : [];
+    if(curTab==='mov') renderMov();
+  });
+}
+
+// Avvia Firebase quando pronto
+if(window._fbReady){
+  initFirebase();
+} else {
+  window.addEventListener('fbready', initFirebase, {once:true});
+  // Fallback locale mentre Firebase carica
+  try {
+    products  = JSON.parse(localStorage.getItem('mgz2_products')  || '[]');
+    movements = JSON.parse(localStorage.getItem('mgz2_movements') || '[]');
+  } catch(e){}
+  renderStats(); renderList();
+}
 </script>
 </body>
 </html>
