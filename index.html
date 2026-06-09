@@ -1081,12 +1081,19 @@ function openFormScanner(mode){
       Html5QrcodeSupportedFormats.CODE_39,
       Html5QrcodeSupportedFormats.ITF,
     ];
+    const camConstraints = {
+      facingMode: 'environment',
+      focusMode: 'continuous',
+      advanced: [{ focusMode: 'macro' }, { zoom: 1.5 }]
+    };
     formScanner.start(
-      {facingMode:'environment'},
-      {fps:10, qrbox:{width:240,height:160}, formatsToSupport:formats},
+      camConstraints,
+      {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats},
       onFormScan,
       ()=>{}
-    ).catch(()=>{ toast('⚠️ Fotocamera non disponibile'); cm('m-form-scanner'); });
+    ).then(()=>{
+      forceMacroFocus(formScanner);
+    }).catch(()=>{ toast('⚠️ Fotocamera non disponibile'); cm('m-form-scanner'); });
   }, 300);
 }
 
@@ -1107,6 +1114,34 @@ function closeFormScanner(){
   cm('m-form-scanner');
 }
 
+// Forza messa a fuoco ravvicinata sul track video attivo
+function forceMacroFocus(scannerInstance){
+  try {
+    const video = document.querySelector('video');
+    if(!video || !video.srcObject) return;
+    const track = video.srcObject.getVideoTracks()[0];
+    if(!track) return;
+    const caps = track.getCapabilities();
+    const constraints = {};
+    // Modalità macro se supportata
+    if(caps.focusMode && caps.focusMode.includes('continuous')){
+      constraints.focusMode = 'continuous';
+    }
+    // Distanza di messa a fuoco ravvicinata
+    if(caps.focusDistance){
+      constraints.focusDistance = caps.focusDistance.min;
+      constraints.focusMode = 'manual';
+    }
+    // Zoom minimo per non allontanarsi troppo
+    if(caps.zoom){
+      constraints.zoom = Math.min(1.8, caps.zoom.max);
+    }
+    if(Object.keys(constraints).length){
+      track.applyConstraints({ advanced: [constraints] }).catch(()=>{});
+    }
+  } catch(e){}
+}
+
 // ═══════════════ SCANNER (tab) ═══════════════
 function startScanner(){
   if(scanner) return;
@@ -1123,12 +1158,20 @@ function startScanner(){
     Html5QrcodeSupportedFormats.CODE_39,
     Html5QrcodeSupportedFormats.ITF,
   ];
+  const camConstraints = {
+    facingMode: 'environment',
+    focusMode: 'continuous',
+    advanced: [{ focusMode: 'macro' }, { zoom: 1.5 }]
+  };
   scanner.start(
-    {facingMode:'environment'},
-    {fps:10,qrbox:{width:240,height:160},formatsToSupport:formats},
+    camConstraints,
+    {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats},
     onScan,
     ()=>{}
-  ).catch(()=>toast('⚠️ Fotocamera non disponibile'));
+  ).then(()=>{
+    // forza messa a fuoco ravvicinata dopo avvio
+    forceMacroFocus(scanner);
+  }).catch(()=>toast('⚠️ Fotocamera non disponibile'));
 }
 function stopScanner(){
   if(scanner){scanner.stop().catch(()=>{});scanner=null;}
