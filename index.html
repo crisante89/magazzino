@@ -1552,7 +1552,7 @@ Se un articolo del DDT non corrisponde a nessun articolo in magazzino, usa match
       },
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001',
-        max_tokens:1000,
+        max_tokens:2000,
         messages:[{
           role:'user',
           content:[
@@ -1570,8 +1570,27 @@ Se un articolo del DDT non corrisponde a nessun articolo in magazzino, usa match
 
     const data = await resp.json();
     const text = data.content.map(c=>c.text||'').join('');
-    const clean = text.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
+
+    // Estrai il JSON dalla risposta in modo robusto
+    let parsed;
+    try {
+      // Prova prima il testo pulito
+      const clean = text.replace(/```json|```/g,'').trim();
+      parsed = JSON.parse(clean);
+    } catch(e1) {
+      // Cerca il blocco JSON con regex
+      const match = text.match(/\{[\s\S]*"righe"[\s\S]*\}/);
+      if(match){
+        try { parsed = JSON.parse(match[0]); }
+        catch(e2){ throw new Error('Impossibile leggere la risposta AI. Riprova con una foto più nitida.'); }
+      } else {
+        throw new Error('Risposta AI non valida. Riprova con una foto più nitida e ben illuminata.');
+      }
+    }
+
+    if(!parsed.righe || !Array.isArray(parsed.righe)){
+      throw new Error('Nessuna riga trovata nel documento. Assicurati che la foto sia leggibile.');
+    }
     ddtRighe = parsed.righe.map(r=>({...r, matchId: r.matchId||null}));
     renderDdtRighe();
     showDdtStep('risultato');
