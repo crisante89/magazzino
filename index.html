@@ -852,8 +852,8 @@ textarea.fi{resize:none;}
     </div>
     <div id="ddt-step-risultato" style="display:none;">
       <div style="font-size:13px;color:var(--t2);margin-bottom:12px;">Abbina ogni riga del DDT al tuo articolo in magazzino:</div>
-      <div id="ddt-righe-list"></div>
-      <button class="btn-p" id="ddt-btn-carica" onclick="confermaDDT()">📥 Carica tutto in magazzino</button>
+      <div id="ddt-righe-list" style="-webkit-overflow-scrolling:touch;"></div>
+      <button class="btn-p" id="ddt-btn-carica" style="margin-top:8px;" onclick="confermaDDT()">📥 Carica tutto in magazzino</button>
       <button class="btn-s" onclick="resetDDT()">↩ Nuova foto</button>
     </div>
     <div id="ddt-step-errore" style="display:none;text-align:center;padding:20px 0;">
@@ -1658,30 +1658,42 @@ function renderDdtRighe(){
               <div class="ddt-match-sku">${matched.sku||''}</div>
             </div>
           </div>
-          <div class="ddt-change" style="cursor:pointer;pointer-events:auto;" onclick="openDdtPick(${i})">✏️ Cambia abbinamento</div>`
+          <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Cambia abbinamento</div>`
         : isNew
           ? `<div class="ddt-match selected" style="border-color:var(--gold);background:var(--gold-glow);">
               <div style="font-size:20px;">✨</div>
               <div style="flex:1;">
-                <div class="ddt-match-name" style="color:var(--gold);">Nuovo articolo da creare</div>
-                <div class="ddt-match-sku">${r.newName||r.raw}</div>
+                <div class="ddt-match-name" style="color:var(--gold);">Nuovo: ${r.newName||r.raw}</div>
               </div>
             </div>
-            <div class="ddt-change" style="cursor:pointer;pointer-events:auto;" onclick="openDdtPick(${i})">✏️ Abbina a esistente invece</div>`
-          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;pointer-events:auto;">
-               <div style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);padding:11px;font-size:13px;font-weight:600;color:var(--t2);text-align:center;cursor:pointer;pointer-events:auto;" ontouchstart="" onclick="openDdtPick(${i})">🔗 Abbina</div>
-               <div style="background:var(--gold);border-radius:var(--rs);padding:11px;font-size:13px;font-weight:700;color:#000;text-align:center;cursor:pointer;pointer-events:auto;" ontouchstart="" onclick="openNuovoArticoloDDT(${i})">✨ Crea nuovo</div>
+            <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Abbina a esistente invece</div>`
+          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+               <div class="ddt-tap-btn" data-action="pick" data-idx="${i}" style="background:var(--s3);border:1px solid var(--b2);border-radius:var(--rs);padding:13px 8px;font-size:13px;font-weight:600;color:var(--t2);text-align:center;">🔗 Abbina</div>
+               <div class="ddt-tap-btn" data-action="new" data-idx="${i}" style="background:var(--gold);border-radius:var(--rs);padding:13px 8px;font-size:13px;font-weight:700;color:#000;text-align:center;">✨ Crea nuovo</div>
              </div>`
       }
     </div>`;
   }).join('');
 
-  // Attacca listener direttamente agli elementi dopo il render
-  el.querySelectorAll('[data-ddt-pick]').forEach(btn=>{
-    btn.addEventListener('click', ()=> openDdtPick(parseInt(btn.dataset.ddtPick)));
+  // Rimuovi vecchi listener e aggiungi delegazione eventi
+  const newEl = el.cloneNode(true);
+  el.parentNode.replaceChild(newEl, el);
+  newEl.addEventListener('click', function(e){
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    e.stopPropagation();
+    const idx = parseInt(btn.dataset.idx);
+    if(btn.dataset.action === 'pick') openDdtPick(idx);
+    else if(btn.dataset.action === 'new') openNuovoArticoloDDT(idx);
   });
-  el.querySelectorAll('[data-ddt-new]').forEach(btn=>{
-    btn.addEventListener('click', ()=> openNuovoArticoloDDT(parseInt(btn.dataset.ddtNew)));
+  newEl.addEventListener('touchend', function(e){
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const idx = parseInt(btn.dataset.idx);
+    if(btn.dataset.action === 'pick') openDdtPick(idx);
+    else if(btn.dataset.action === 'new') openNuovoArticoloDDT(idx);
   });
 }
 
