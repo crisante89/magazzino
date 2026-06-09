@@ -338,6 +338,7 @@ textarea.fi{resize:none;}
   text-align:center;cursor:pointer;
 }
 .ddt-tap-gold{background:var(--gold);color:#000;border-color:var(--gold);}
+.ddt-tap-red{background:rgba(224,82,82,.1);color:var(--red);border-color:rgba(224,82,82,.3);}
 
 /* DDT */
 .ddt-riga{
@@ -1607,18 +1608,18 @@ function renderDdtRighe(){
             <div style="font-size:20px;">${matched.emoji||'📦'}</div>
             <div style="flex:1;"><div class="ddt-match-name">✓ ${matched.name}</div><div class="ddt-match-sku">${matched.sku||''}</div></div>
           </div>
-          <div style="display:flex;gap:14px;margin-top:6px;">
-            <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Cambia</div>
-            <div class="ddt-change" data-action="unlink" data-idx="${i}" style="color:var(--red);">✕ Non associare</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+            <div class="ddt-tap-btn" data-action="pick" data-idx="${i}">✏️ Cambia</div>
+            <div class="ddt-tap-btn ddt-tap-red" data-action="unlink" data-idx="${i}">✕ Non associare</div>
           </div>`
         :isNew
           ?`<div class="ddt-match selected" style="border-color:var(--gold);background:var(--gold-glow);">
               <div style="font-size:20px;">✨</div>
               <div style="flex:1;"><div class="ddt-match-name" style="color:var(--gold);">Nuovo: ${r.newName||r.raw}</div></div>
             </div>
-            <div style="display:flex;gap:14px;margin-top:6px;">
-              <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Abbina a esistente</div>
-              <div class="ddt-change" data-action="unlink" data-idx="${i}" style="color:var(--red);">✕ Non associare</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+              <div class="ddt-tap-btn" data-action="pick" data-idx="${i}">✏️ Abbina a esistente</div>
+              <div class="ddt-tap-btn ddt-tap-red" data-action="unlink" data-idx="${i}">✕ Non associare</div>
             </div>`
           :`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Questa riga verrà ignorata se non abbinata</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
