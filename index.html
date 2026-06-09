@@ -1655,66 +1655,6 @@ function saveNegozio(){
 }
 
 
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:2000,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image', source:{type:'base64', media_type:mtype, data:b64}},
-            {type:'text', text:prompt}
-          ]
-        }]
-      })
-    });
-
-    if(!resp.ok){
-      const err = await resp.json();
-      throw new Error(err.error?.message||'Errore API');
-    }
-
-    const data = await resp.json();
-    const text = data.content.map(c=>c.text||'').join('');
-
-    // Estrai il JSON dalla risposta in modo robusto
-    let parsed;
-    try {
-      // Prova prima il testo pulito
-      const clean = text.replace(/```json|```/g,'').trim();
-      parsed = JSON.parse(clean);
-    } catch(e1) {
-      // Cerca il blocco JSON con regex
-      const match = text.match(/\{[\s\S]*"righe"[\s\S]*\}/);
-      if(match){
-        try { parsed = JSON.parse(match[0]); }
-        catch(e2){ throw new Error('Impossibile leggere la risposta AI. Riprova con una foto più nitida.'); }
-      } else {
-        throw new Error('Risposta AI non valida. Riprova con una foto più nitida e ben illuminata.');
-      }
-    }
-
-    if(!parsed.righe || !Array.isArray(parsed.righe)){
-      throw new Error('Nessuna riga trovata nel documento. Assicurati che la foto sia leggibile.');
-    }
-    ddtRighe = parsed.righe.map(r=>({...r, matchId: r.matchId||null}));
-    renderDdtRighe();
-    showDdtStep('risultato');
-  } catch(e){
-    showDdtStep('errore');
-    document.getElementById('ddt-err-msg').textContent = 'Errore: '+e.message;
-  }
-}
-
 let ddtNewIdx = null;
 let ddtNewEmoji = '📦';
 
