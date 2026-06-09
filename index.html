@@ -1070,30 +1070,8 @@ function openFormScanner(mode){
   document.getElementById('fqr').innerHTML='';
   om('m-form-scanner');
   setTimeout(()=>{
-    formScanner = new Html5Qrcode('fqr');
-    const formats = [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.ITF,
-    ];
-    const camConstraints = {
-      facingMode: 'environment',
-      focusMode: 'continuous',
-      advanced: [{ focusMode: 'macro' }, { zoom: 1.5 }]
-    };
-    formScanner.start(
-      camConstraints,
-      {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats},
-      onFormScan,
-      ()=>{}
-    ).then(()=>{
-      forceMacroFocus(formScanner);
-    }).catch(()=>{ toast('⚠️ Fotocamera non disponibile'); cm('m-form-scanner'); });
+    startScannerWithFallback('fqr', onFormScan, ()=>{ toast('⚠️ Fotocamera non disponibile'); cm('m-form-scanner'); })
+      .then(s=>{ formScanner=s; });
   }, 300);
 }
 
@@ -1123,16 +1101,13 @@ function forceMacroFocus(scannerInstance){
     if(!track) return;
     const caps = track.getCapabilities();
     const constraints = {};
-    // Modalità macro se supportata
     if(caps.focusMode && caps.focusMode.includes('continuous')){
       constraints.focusMode = 'continuous';
     }
-    // Distanza di messa a fuoco ravvicinata
     if(caps.focusDistance){
       constraints.focusDistance = caps.focusDistance.min;
       constraints.focusMode = 'manual';
     }
-    // Zoom minimo per non allontanarsi troppo
     if(caps.zoom){
       constraints.zoom = Math.min(1.8, caps.zoom.max);
     }
@@ -1142,12 +1117,8 @@ function forceMacroFocus(scannerInstance){
   } catch(e){}
 }
 
-// ═══════════════ SCANNER (tab) ═══════════════
-function startScanner(){
-  if(scanner) return;
-  const el=document.getElementById('aqr');
-  el.innerHTML='';
-  scanner=new Html5Qrcode('aqr');
+// Avvia scanner con fallback se i constraint avanzati falliscono
+async function startScannerWithFallback(elementId, onSuccess, onError){
   const formats=[
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.EAN_13,
@@ -1158,20 +1129,55 @@ function startScanner(){
     Html5QrcodeSupportedFormats.CODE_39,
     Html5QrcodeSupportedFormats.ITF,
   ];
-  const camConstraints = {
-    facingMode: 'environment',
-    focusMode: 'continuous',
-    advanced: [{ focusMode: 'macro' }, { zoom: 1.5 }]
-  };
-  scanner.start(
-    camConstraints,
-    {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats},
-    onScan,
-    ()=>{}
-  ).then(()=>{
-    // forza messa a fuoco ravvicinata dopo avvio
-    forceMacroFocus(scanner);
-  }).catch(()=>toast('⚠️ Fotocamera non disponibile'));
+  const config = {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats};
+
+  // Assicurati che non ci siano stream attivi rimasti aperti
+  try {
+    const streams = await navigator.mediaDevices.getUserMedia({video:true});
+    streams.getTracks().forEach(t=>t.stop());
+  } catch(e){}
+
+  const instance = new Html5Qrcode(elementId);
+
+  // Tentativo 1: con constraint macro
+  try {
+    await instance.start(
+      { facingMode:'environment', advanced:[{focusMode:'macro'},{zoom:1.5}] },
+      config, onSuccess, ()=>{}
+    );
+    forceMacroFocus(instance);
+    return instance;
+  } catch(e){}
+
+  // Tentativo 2: solo environment senza constraint avanzati
+  try {
+    await instance.start(
+      { facingMode:'environment' },
+      config, onSuccess, ()=>{}
+    );
+    return instance;
+  } catch(e){}
+
+  // Tentativo 3: qualsiasi fotocamera disponibile
+  try {
+    await instance.start(
+      { facingMode:'user' },
+      config, onSuccess, ()=>{}
+    );
+    return instance;
+  } catch(e){
+    if(onError) onError();
+    return null;
+  }
+}
+
+// ═══════════════ SCANNER (tab) ═══════════════
+function startScanner(){
+  if(scanner) return;
+  const el=document.getElementById('aqr');
+  el.innerHTML='';
+  startScannerWithFallback('aqr', onScan, ()=>toast('⚠️ Fotocamera non disponibile'))
+    .then(s=>{ scanner=s; });
 }
 function stopScanner(){
   if(scanner){scanner.stop().catch(()=>{});scanner=null;}
