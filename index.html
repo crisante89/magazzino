@@ -1751,7 +1751,7 @@ function confermaDDT(){
     addMov(p.id, p.name, r.qty, 'carico DDT');
   });
   save(); renderStats(); renderList();
-  cm('m-ddt'); resetDDT();
+  chiudiDDT();
   toast(`✅ ${righeOk.length} articoli caricati dal DDT`);
 }
 
@@ -2020,8 +2020,8 @@ function deletePreventivo(id){
 }
 
 // ═══════════════ UTILS ═══════════════
-function om(id){ document.getElementById(id).classList.add('open'); }
-function cm(id){ document.getElementById(id).classList.remove('open'); }
+function om(id){ const el=document.getElementById(id); if(el) el.classList.add('open'); }
+function cm(id){ const el=document.getElementById(id); if(el) el.classList.remove('open'); }
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
