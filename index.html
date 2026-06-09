@@ -787,6 +787,45 @@ textarea.fi{resize:none;}
   </div>
 </div>
 
+<!-- Nuovo articolo da DDT -->
+<div class="overlay" id="m-ddt-new">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">✨ Nuovo articolo dal DDT</div>
+    <div style="background:var(--s2);border-radius:var(--rs);padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--t2);">
+      📋 Descrizione originale: <span id="ddt-new-raw" style="color:var(--t1);font-style:italic;"></span>
+    </div>
+    <div class="fg"><span class="fl">Nome articolo *</span><input class="fi" id="ddt-new-nome" placeholder="es. Divano Chester"></div>
+    <div class="frow">
+      <div class="fg"><span class="fl">Marca</span><input class="fi" id="ddt-new-brand" placeholder="es. Natuzzi"></div>
+      <div class="fg"><span class="fl">Categoria</span><input class="fi" id="ddt-new-cat" placeholder="es. Divani"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><span class="fl">Prezzo €</span><input class="fi" id="ddt-new-price" type="number" placeholder="0.00"></div>
+      <div class="fg"><span class="fl">Scorta minima</span><input class="fi" id="ddt-new-minqty" type="number" placeholder="1" min="1"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><span class="fl">Colore</span><input class="fi" id="ddt-new-color" placeholder="es. Grigio"></div>
+      <div class="fg"><span class="fl">Dimensioni</span><input class="fi" id="ddt-new-dims" placeholder="es. 220×90 cm"></div>
+    </div>
+    <div class="fg">
+      <span class="fl">Icona</span>
+      <div class="erow" id="ddt-new-epick">
+        <div class="eopt on" data-e="📦" onclick="selDdtE(this)">📦</div>
+        <div class="eopt" data-e="🪑" onclick="selDdtE(this)">🪑</div>
+        <div class="eopt" data-e="🛋️" onclick="selDdtE(this)">🛋️</div>
+        <div class="eopt" data-e="🖼️" onclick="selDdtE(this)">🖼️</div>
+        <div class="eopt" data-e="💡" onclick="selDdtE(this)">💡</div>
+        <div class="eopt" data-e="🪞" onclick="selDdtE(this)">🪞</div>
+        <div class="eopt" data-e="🛏️" onclick="selDdtE(this)">🛏️</div>
+        <div class="eopt" data-e="🪴" onclick="selDdtE(this)">🪴</div>
+      </div>
+    </div>
+    <button class="btn-p" onclick="salvaNuovoArticoloDDT()">✨ Crea e aggiungi al DDT</button>
+    <button class="btn-s" onclick="cm('m-ddt-new')">Annulla</button>
+  </div>
+</div>
+
 <!-- DDT lettura AI -->
 <div class="overlay" id="m-ddt">
   <div class="sheet">
@@ -1604,6 +1643,7 @@ function renderDdtRighe(){
   const el = document.getElementById('ddt-righe-list');
   el.innerHTML = ddtRighe.map((r,i)=>{
     const matched = r.matchId ? products.find(p=>p.id===r.matchId) : null;
+    const isNew = r.isNew; // articolo creato come nuovo
     return `<div class="ddt-riga">
       <div class="ddt-riga-raw">📋 "${r.raw}"</div>
       <div class="ddt-riga-qty">Quantità: ${r.qty}</div>
@@ -1616,8 +1656,19 @@ function renderDdtRighe(){
             </div>
           </div>
           <div class="ddt-change" onclick="openDdtPick(${i})">✏️ Cambia abbinamento</div>`
-        : `<div class="ddt-nessuno">⚠️ Nessun articolo abbinato</div>
-           <button class="btn-s" style="padding:8px;font-size:12px;margin-top:4px;" onclick="openDdtPick(${i})">🔗 Abbina manualmente</button>`
+        : isNew
+          ? `<div class="ddt-match selected" style="border-color:var(--gold);background:var(--gold-glow);">
+              <div style="font-size:20px;">✨</div>
+              <div style="flex:1;">
+                <div class="ddt-match-name" style="color:var(--gold);">Nuovo articolo da creare</div>
+                <div class="ddt-match-sku">${r.newName||r.raw}</div>
+              </div>
+            </div>
+            <div class="ddt-change" onclick="openDdtPick(${i})">✏️ Abbina a esistente invece</div>`
+          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+               <button class="btn-s" style="padding:9px;font-size:12px;margin:0;" onclick="openDdtPick(${i})">🔗 Abbina a esistente</button>
+               <button class="btn-p" style="padding:9px;font-size:12px;margin:0;" onclick="openNuovoArticoloDDT(${i})">✨ Crea nuovo</button>
+             </div>`
       }
     </div>`;
   }).join('');
