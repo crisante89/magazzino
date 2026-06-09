@@ -865,42 +865,6 @@ textarea.fi{resize:none;}
   </div>
 </div>
 
-<!-- DDT lettura AI -->
-<div class="overlay" id="m-ddt">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title">📄 Carica DDT con AI</div>
-    <div id="ddt-step-foto" >
-      <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.6;">
-        Scatta una foto al DDT del fornitore.<br>L'AI estrarrà automaticamente gli articoli e le quantità.
-      </div>
-      <label style="display:block;background:var(--s2);border:2px dashed var(--b2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;">
-        <div style="font-size:40px;margin-bottom:8px;">📷</div>
-        <div style="font-size:14px;font-weight:600;">Scatta foto o scegli immagine</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:4px;">JPG, PNG, HEIC</div>
-        <input type="file" id="ddt-foto-input" accept="image/*" capture="environment" style="display:none;" onchange="onDdtFoto(this)">
-      </label>
-    </div>
-    <div id="ddt-step-loading" style="display:none;text-align:center;padding:32px 0;">
-      <div style="font-size:48px;margin-bottom:14px;">🤖</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Lettura in corso...</div>
-      <div style="font-size:12px;color:var(--t2);">L'AI sta analizzando il DDT</div>
-    </div>
-    <div id="ddt-step-risultato" style="display:none;">
-      <div style="font-size:13px;color:var(--t2);margin-bottom:12px;">Abbina ogni riga del DDT al tuo articolo in magazzino:</div>
-      <div id="ddt-righe-list" style="-webkit-overflow-scrolling:touch;"></div>
-      <button class="btn-p" id="ddt-btn-carica" style="margin-top:8px;" onclick="confermaDDT()">📥 Carica tutto in magazzino</button>
-      <button class="btn-s" onclick="resetDDT()">↩ Nuova foto</button>
-    </div>
-    <div id="ddt-step-errore" style="display:none;text-align:center;padding:20px 0;">
-      <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
-      <div id="ddt-err-msg" style="font-size:13px;color:var(--red);margin-bottom:14px;"></div>
-      <button class="btn-s" onclick="resetDDT()">Riprova</button>
-    </div>
-    <button class="btn-s" style="margin-top:8px;" onclick="cm('m-ddt')">Chiudi</button>
-  </div>
-</div>
-
 <!-- Impostazioni PIN -->
 <div class="overlay" id="m-settings">
   <div class="sheet">
@@ -917,6 +881,7 @@ textarea.fi{resize:none;}
 <div class="toast" id="toast"></div>
 
 <script>
+
 // ═══════════════ DATA ═══════════════
 let products  = JSON.parse(localStorage.getItem('mgz2_products')  || '[]');
 let movements = JSON.parse(localStorage.getItem('mgz2_movements') || '[]');
@@ -1659,12 +1624,14 @@ function renderDdtRighe(){
 }
 
 document.addEventListener('click', function(e){
-  const btn=e.target.closest('[data-action][data-idx]');
-  if(!btn) return;
+  const btn=e.target.closest('.ddt-tap-btn, .ddt-change');
+  if(!btn || !btn.dataset.action) return;
   const idx=parseInt(btn.dataset.idx);
   if(btn.dataset.action==='pick') openDdtPick(idx);
   else if(btn.dataset.action==='new') openNuovoArticoloDDT(idx);
 });
+
+function openNegozio(){
   document.getElementById('ng-nome').value = negozio.nome||'';
   document.getElementById('ng-indirizzo').value = negozio.indirizzo||'';
   document.getElementById('ng-tel').value = negozio.tel||'';
@@ -1687,56 +1654,7 @@ function saveNegozio(){
   cm('m-negozio'); toast('✅ Dati salvati');
 }
 
-function resetDDT(){
-  ddtRighe=[];
-  document.getElementById('ddt-foto-input').value='';
-  showDdtStep('foto');
-}
 
-function showDdtStep(step){
-  ['foto','loading','risultato','errore'].forEach(s=>{
-    document.getElementById('ddt-step-'+s).style.display = s===step?'block':'none';
-  });
-}
-
-async function onDdtFoto(input){
-  const file = input.files[0]; if(!file) return;
-  const apiKey = localStorage.getItem('mgz2_apikey')||'';
-  if(!apiKey){ showDdtStep('errore'); document.getElementById('ddt-err-msg').textContent='API key non configurata. Aprire le impostazioni negozio 🏪 e inserire la chiave.'; return; }
-
-  showDdtStep('loading');
-
-  // Converti immagine in base64
-  const b64 = await new Promise((res,rej)=>{
-    const r = new FileReader();
-    r.onload = ()=>res(r.result.split(',')[1]);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-  const mtype = file.type||'image/jpeg';
-
-  // Lista articoli magazzino per il prompt
-  const listaArticoli = products.map(p=>`- ID:${p.id} | "${p.name}" | SKU:${p.sku||''} | marca:${p.brand||''}`).join('\n');
-
-  const prompt = `Sei un assistente per la gestione magazzino. Analizza questo DDT (documento di trasporto) e restituisci SOLO un JSON valido, senza testo aggiuntivo.
-
-Il mio magazzino contiene questi articoli:
-${listaArticoli||'(nessun articolo ancora)'}
-
-Estrai ogni riga del DDT con: descrizione originale, quantità, e quale articolo del mio magazzino corrisponde meglio (usa l'ID esatto).
-
-Rispondi SOLO con questo JSON:
-{
-  "righe": [
-    {
-      "raw": "descrizione originale dal DDT",
-      "qty": 1,
-      "matchId": "ID_articolo_magazzino_o_null"
-    }
-  ]
-}
-
-Se un articolo del DDT non corrisponde a nessun articolo in magazzino, usa matchId: null.`;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
@@ -1795,61 +1713,6 @@ Se un articolo del DDT non corrisponde a nessun articolo in magazzino, usa match
     showDdtStep('errore');
     document.getElementById('ddt-err-msg').textContent = 'Errore: '+e.message;
   }
-}
-
-function renderDdtRighe(){
-  const el = document.getElementById('ddt-righe-list');
-  el.innerHTML = ddtRighe.map((r,i)=>{
-    const matched = r.matchId ? products.find(p=>p.id===r.matchId) : null;
-    const isNew = r.isNew;
-    return `<div class="ddt-riga">
-      <div class="ddt-riga-raw">📋 "${r.raw}"</div>
-      <div class="ddt-riga-qty">Quantità: ${r.qty}</div>
-      ${matched
-        ? `<div class="ddt-match selected">
-            <div style="font-size:20px;">${matched.emoji||'📦'}</div>
-            <div style="flex:1;">
-              <div class="ddt-match-name">✓ ${matched.name}</div>
-              <div class="ddt-match-sku">${matched.sku||''}</div>
-            </div>
-          </div>
-          <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Cambia abbinamento</div>`
-        : isNew
-          ? `<div class="ddt-match selected" style="border-color:var(--gold);background:var(--gold-glow);">
-              <div style="font-size:20px;">✨</div>
-              <div style="flex:1;">
-                <div class="ddt-match-name" style="color:var(--gold);">Nuovo: ${r.newName||r.raw}</div>
-              </div>
-            </div>
-            <div class="ddt-change" data-action="pick" data-idx="${i}">✏️ Abbina a esistente invece</div>`
-          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-               <div class="ddt-tap-btn" data-action="pick" data-idx="${i}" style="background:var(--s3);border:1px solid var(--b2);border-radius:var(--rs);padding:13px 8px;font-size:13px;font-weight:600;color:var(--t2);text-align:center;">🔗 Abbina</div>
-               <div class="ddt-tap-btn" data-action="new" data-idx="${i}" style="background:var(--gold);border-radius:var(--rs);padding:13px 8px;font-size:13px;font-weight:700;color:#000;text-align:center;">✨ Crea nuovo</div>
-             </div>`
-      }
-    </div>`;
-  }).join('');
-
-  // Rimuovi vecchi listener e aggiungi delegazione eventi
-  const newEl = el.cloneNode(true);
-  el.parentNode.replaceChild(newEl, el);
-  newEl.addEventListener('click', function(e){
-    const btn = e.target.closest('[data-action]');
-    if(!btn) return;
-    e.stopPropagation();
-    const idx = parseInt(btn.dataset.idx);
-    if(btn.dataset.action === 'pick') openDdtPick(idx);
-    else if(btn.dataset.action === 'new') openNuovoArticoloDDT(idx);
-  });
-  newEl.addEventListener('touchend', function(e){
-    const btn = e.target.closest('[data-action]');
-    if(!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const idx = parseInt(btn.dataset.idx);
-    if(btn.dataset.action === 'pick') openDdtPick(idx);
-    else if(btn.dataset.action === 'new') openNuovoArticoloDDT(idx);
-  });
 }
 
 let ddtNewIdx = null;
@@ -2058,15 +1921,6 @@ function renderPickArt(){
       </div>
     </div>`).join('') || '<div class="empty">Nessun articolo trovato.</div>';
 }
-function addArtToPreventivo(id){
-  const p = products.find(x=>x.id===id); if(!p) return;
-  const ex = pvItems.find(x=>x.productId===id);
-  if(ex){ ex.qty++; }
-  else { pvItems.push({productId:id, name:p.name, emoji:p.emoji||'📦', prezzo:parseFloat(p.price)||0, qty:1}); }
-  renderPvItems(); renderPvTotale();
-  cm('m-pick-art');
-}
-
 function savePreventivo(){
   const cliente = document.getElementById('pv-cliente').value.trim();
   if(!cliente){ toast('⚠️ Inserisci il nome cliente'); return; }
