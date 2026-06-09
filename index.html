@@ -1092,31 +1092,6 @@ function closeFormScanner(){
   cm('m-form-scanner');
 }
 
-// Forza messa a fuoco ravvicinata sul track video attivo
-function forceMacroFocus(scannerInstance){
-  try {
-    const video = document.querySelector('video');
-    if(!video || !video.srcObject) return;
-    const track = video.srcObject.getVideoTracks()[0];
-    if(!track) return;
-    const caps = track.getCapabilities();
-    const constraints = {};
-    if(caps.focusMode && caps.focusMode.includes('continuous')){
-      constraints.focusMode = 'continuous';
-    }
-    if(caps.focusDistance){
-      constraints.focusDistance = caps.focusDistance.min;
-      constraints.focusMode = 'manual';
-    }
-    if(caps.zoom){
-      constraints.zoom = Math.min(1.8, caps.zoom.max);
-    }
-    if(Object.keys(constraints).length){
-      track.applyConstraints({ advanced: [constraints] }).catch(()=>{});
-    }
-  } catch(e){}
-}
-
 // Avvia scanner con fallback se i constraint avanzati falliscono
 async function startScannerWithFallback(elementId, onSuccess, onError){
   const formats=[
@@ -1129,45 +1104,29 @@ async function startScannerWithFallback(elementId, onSuccess, onError){
     Html5QrcodeSupportedFormats.CODE_39,
     Html5QrcodeSupportedFormats.ITF,
   ];
-  const config = {fps:15, qrbox:{width:240,height:160}, formatsToSupport:formats};
-
-  // Assicurati che non ci siano stream attivi rimasti aperti
-  try {
-    const streams = await navigator.mediaDevices.getUserMedia({video:true});
-    streams.getTracks().forEach(t=>t.stop());
-  } catch(e){}
+  const config = {fps:10, qrbox:{width:200,height:200}, formatsToSupport:formats};
 
   const instance = new Html5Qrcode(elementId);
 
-  // Tentativo 1: con constraint macro
+  // Unico tentativo: solo facingMode environment, niente constraint avanzati
   try {
     await instance.start(
-      { facingMode:'environment', advanced:[{focusMode:'macro'},{zoom:1.5}] },
-      config, onSuccess, ()=>{}
-    );
-    forceMacroFocus(instance);
-    return instance;
-  } catch(e){}
-
-  // Tentativo 2: solo environment senza constraint avanzati
-  try {
-    await instance.start(
-      { facingMode:'environment' },
-      config, onSuccess, ()=>{}
-    );
-    return instance;
-  } catch(e){}
-
-  // Tentativo 3: qualsiasi fotocamera disponibile
-  try {
-    await instance.start(
-      { facingMode:'user' },
+      { facingMode: 'environment' },
       config, onSuccess, ()=>{}
     );
     return instance;
   } catch(e){
-    if(onError) onError();
-    return null;
+    // Ultimo tentativo: lascia scegliere al browser
+    try {
+      await instance.start(
+        true, // true = usa fotocamera di default
+        config, onSuccess, ()=>{}
+      );
+      return instance;
+    } catch(e2){
+      if(onError) onError();
+      return null;
+    }
   }
 }
 
@@ -1180,7 +1139,19 @@ function startScanner(){
     .then(s=>{ scanner=s; });
 }
 function stopScanner(){
-  if(scanner){scanner.stop().catch(()=>{});scanner=null;}
+  if(scanner){
+    scanner.stop().catch(()=>{}).finally(()=>{ scanner=null; });
+  }
+}
+function stopAllScanners(){
+  stopScanner();
+  if(formScanner){
+    formScanner.stop().catch(()=>{}).finally(()=>{ formScanner=null; });
+  }
+  // Rilascia qualsiasi stream video rimasto aperto
+  document.querySelectorAll('video').forEach(v=>{
+    if(v.srcObject) v.srcObject.getTracks().forEach(t=>t.stop());
+  });
 }
 
 function onScan(raw){
