@@ -336,6 +336,9 @@ textarea.fi{resize:none;}
 .ddt-riga{
   background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);
   padding:12px 14px;margin-bottom:10px;
+  pointer-events:auto;
+  position:relative;
+  z-index:1;
 }
 .ddt-riga-raw{font-size:12px;color:var(--t2);margin-bottom:8px;line-height:1.5;font-style:italic;}
 .ddt-riga-qty{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;}
@@ -1643,7 +1646,7 @@ function renderDdtRighe(){
   const el = document.getElementById('ddt-righe-list');
   el.innerHTML = ddtRighe.map((r,i)=>{
     const matched = r.matchId ? products.find(p=>p.id===r.matchId) : null;
-    const isNew = r.isNew; // articolo creato come nuovo
+    const isNew = r.isNew;
     return `<div class="ddt-riga">
       <div class="ddt-riga-raw">📋 "${r.raw}"</div>
       <div class="ddt-riga-qty">Quantità: ${r.qty}</div>
@@ -1655,7 +1658,7 @@ function renderDdtRighe(){
               <div class="ddt-match-sku">${matched.sku||''}</div>
             </div>
           </div>
-          <div class="ddt-change" onclick="openDdtPick(${i})">✏️ Cambia abbinamento</div>`
+          <div class="ddt-change" style="cursor:pointer;pointer-events:auto;" onclick="openDdtPick(${i})">✏️ Cambia abbinamento</div>`
         : isNew
           ? `<div class="ddt-match selected" style="border-color:var(--gold);background:var(--gold-glow);">
               <div style="font-size:20px;">✨</div>
@@ -1664,14 +1667,79 @@ function renderDdtRighe(){
                 <div class="ddt-match-sku">${r.newName||r.raw}</div>
               </div>
             </div>
-            <div class="ddt-change" onclick="openDdtPick(${i})">✏️ Abbina a esistente invece</div>`
-          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
-               <button class="btn-s" style="padding:9px;font-size:12px;margin:0;" onclick="openDdtPick(${i})">🔗 Abbina a esistente</button>
-               <button class="btn-p" style="padding:9px;font-size:12px;margin:0;" onclick="openNuovoArticoloDDT(${i})">✨ Crea nuovo</button>
+            <div class="ddt-change" style="cursor:pointer;pointer-events:auto;" onclick="openDdtPick(${i})">✏️ Abbina a esistente invece</div>`
+          : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;pointer-events:auto;">
+               <div style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);padding:11px;font-size:13px;font-weight:600;color:var(--t2);text-align:center;cursor:pointer;pointer-events:auto;" ontouchstart="" onclick="openDdtPick(${i})">🔗 Abbina</div>
+               <div style="background:var(--gold);border-radius:var(--rs);padding:11px;font-size:13px;font-weight:700;color:#000;text-align:center;cursor:pointer;pointer-events:auto;" ontouchstart="" onclick="openNuovoArticoloDDT(${i})">✨ Crea nuovo</div>
              </div>`
       }
     </div>`;
   }).join('');
+
+  // Attacca listener direttamente agli elementi dopo il render
+  el.querySelectorAll('[data-ddt-pick]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDdtPick(parseInt(btn.dataset.ddtPick)));
+  });
+  el.querySelectorAll('[data-ddt-new]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openNuovoArticoloDDT(parseInt(btn.dataset.ddtNew)));
+  });
+}
+
+let ddtNewIdx = null;
+let ddtNewEmoji = '📦';
+
+function selDdtE(el){
+  document.querySelectorAll('#ddt-new-epick .eopt').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  ddtNewEmoji = el.dataset.e;
+}
+
+function openNuovoArticoloDDT(i){
+  ddtNewIdx = i;
+  const r = ddtRighe[i];
+  // Precompila con la descrizione dal DDT
+  document.getElementById('ddt-new-raw').textContent = r.raw;
+  document.getElementById('ddt-new-nome').value = r.raw;
+  document.getElementById('ddt-new-brand').value = '';
+  document.getElementById('ddt-new-cat').value = '';
+  document.getElementById('ddt-new-price').value = '';
+  document.getElementById('ddt-new-minqty').value = '1';
+  document.getElementById('ddt-new-color').value = '';
+  document.getElementById('ddt-new-dims').value = '';
+  ddtNewEmoji = '📦';
+  document.querySelectorAll('#ddt-new-epick .eopt').forEach(e=>e.classList.toggle('on', e.dataset.e==='📦'));
+  om('m-ddt-new');
+}
+
+function salvaNuovoArticoloDDT(){
+  const nome = document.getElementById('ddt-new-nome').value.trim();
+  if(!nome){ toast('⚠️ Inserisci il nome'); return; }
+  // Crea il nuovo articolo (senza giacenza — verrà caricata dal DDT)
+  const id = 'ART'+Date.now();
+  const sku = 'SKU-'+Math.random().toString(36).substr(2,5).toUpperCase();
+  const p = {
+    id, sku, name: nome,
+    brand: document.getElementById('ddt-new-brand').value.trim(),
+    category: document.getElementById('ddt-new-cat').value.trim(),
+    price: document.getElementById('ddt-new-price').value,
+    qty: 0,
+    minQty: parseInt(document.getElementById('ddt-new-minqty').value)||1,
+    color: document.getElementById('ddt-new-color').value.trim(),
+    dims: document.getElementById('ddt-new-dims').value.trim(),
+    emoji: ddtNewEmoji,
+    barcode: '', shopifyUrl: '',
+    createdAt: new Date().toISOString()
+  };
+  products.push(p);
+  save();
+  // Collega la riga DDT al nuovo articolo
+  ddtRighe[ddtNewIdx].matchId = id;
+  ddtRighe[ddtNewIdx].isNew = true;
+  ddtRighe[ddtNewIdx].newName = nome;
+  ddtNewIdx = null;
+  renderDdtRighe();
+  cm('m-ddt-new');
+  toast('✅ Articolo creato e abbinato!');
 }
 
 let ddtPickIdx = null;
