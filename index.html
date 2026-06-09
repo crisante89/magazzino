@@ -332,6 +332,52 @@ textarea.fi{resize:none;}
 }
 .pick-row:active{background:var(--s3);}
 
+/* PREVENTIVO */
+.prev-row{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);
+  padding:13px 14px;margin-bottom:7px;cursor:pointer;transition:all .13s;
+}
+.prev-row:active{background:var(--s2);}
+.prev-row-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.prev-cliente{font-size:14px;font-weight:700;}
+.prev-data{font-size:11px;color:var(--t3);}
+.prev-meta{display:flex;gap:8px;margin-top:5px;align-items:center;flex-wrap:wrap;}
+.prev-totale{font-size:15px;font-weight:800;color:var(--gold);}
+.prev-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.prev-status.bozza{background:rgba(255,255,255,.06);color:var(--t2);}
+.prev-status.inviato{background:rgba(82,183,136,.13);color:var(--green);}
+.pv-item-row{
+  background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);
+  padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;
+}
+.pv-item-info{flex:1;}
+.pv-item-name{font-size:13px;font-weight:600;}
+.pv-item-sub{font-size:11px;color:var(--t2);margin-top:2px;}
+.pv-item-price{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.pv-qty-row{display:flex;gap:6px;align-items:center;margin-top:6px;}
+.pv-qbtn{width:28px;height:28px;border-radius:7px;background:var(--s3);border:1px solid var(--b1);font-size:16px;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.pv-qinp{width:44px;background:var(--s3);border:1px solid var(--b1);border-radius:7px;padding:4px;font-size:13px;font-weight:700;color:var(--t1);text-align:center;outline:none;}
+.pv-del{background:none;border:none;color:var(--t3);font-size:17px;cursor:pointer;padding:4px;}
+
+/* ANTEPRIMA */
+.prev-preview{
+  background:#fff;border-radius:var(--r);padding:20px;
+  color:#222;font-family:-apple-system,sans-serif;margin-bottom:14px;
+}
+.prev-preview h2{font-size:16px;font-weight:800;margin-bottom:2px;color:#111;}
+.prev-preview .sub{font-size:11px;color:#666;margin-bottom:14px;line-height:1.5;}
+.prev-preview table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
+.prev-preview th{background:#f5f5f5;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#888;}
+.prev-preview td{padding:7px 8px;border-bottom:1px solid #eee;}
+.prev-preview .tot-row{font-weight:700;font-size:13px;}
+.prev-preview .note-box{background:#fafafa;border-radius:6px;padding:10px;font-size:11px;color:#666;margin-top:8px;}
+
+.send-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+.btn-wa{background:#25D366;border:none;border-radius:var(--rs);padding:14px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;transition:all .13s;}
+.btn-wa:active{transform:scale(.97);}
+.btn-mail{background:#4A90E2;border:none;border-radius:var(--rs);padding:14px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;transition:all .13s;}
+.btn-mail:active{transform:scale(.97);}
+
 /* SORT PILLS */
 .sort-pill{
   background:var(--s2);border:1px solid var(--b1);border-radius:20px;
@@ -463,6 +509,7 @@ textarea.fi{resize:none;}
   <div class="topbar">
     <div class="topbar-title" id="ttitle">Inventario</div>
     <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;transition:background .5s;" title="Stato sync"></div>
+    <div class="icon-btn" title="Dati negozio" onclick="openNegozio()">🏪</div>
     <div class="icon-btn" title="Esci" onclick="go('home')">🚪</div>
   </div>
 
@@ -508,6 +555,15 @@ textarea.fi{resize:none;}
     <div id="mvlist"></div>
   </div>
 
+  <!-- TAB: preventivi -->
+  <div class="page" id="pg-prev" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn-p" style="flex:1;margin:0;padding:11px;" onclick="openNewPreventivo()">＋ Nuovo preventivo</button>
+    </div>
+    <div class="slbl">Preventivi salvati</div>
+    <div id="prev-list"></div>
+  </div>
+
   <div class="tab-bar">
     <button class="tbtn on" id="tb-inv" onclick="switchTab('inv')">
       <span class="tbtn-ico">📦</span>Inventario
@@ -517,6 +573,9 @@ textarea.fi{resize:none;}
     </button>
     <button class="tbtn" id="tb-mov" onclick="switchTab('mov')">
       <span class="tbtn-ico">📋</span>Movimenti
+    </button>
+    <button class="tbtn" id="tb-prev" onclick="switchTab('prev')">
+      <span class="tbtn-ico">📝</span>Preventivi
     </button>
   </div>
 
@@ -631,6 +690,73 @@ textarea.fi{resize:none;}
   </div>
 </div>
 
+<!-- Nuovo / Modifica Preventivo -->
+<div class="overlay" id="m-prev">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="sheet-title" style="margin:0;" id="m-prev-title">Nuovo Preventivo</div>
+    </div>
+    <!-- Intestazione cliente -->
+    <div class="fg"><span class="fl">Nome cliente</span><input class="fi" id="pv-cliente" placeholder="es. Mario Rossi"></div>
+    <div class="frow">
+      <div class="fg"><span class="fl">Telefono</span><input class="fi" id="pv-tel" placeholder="+39 333..." type="tel"></div>
+      <div class="fg"><span class="fl">Email</span><input class="fi" id="pv-email" placeholder="email@..." type="email"></div>
+    </div>
+    <div class="fg"><span class="fl">Note / condizioni</span><textarea class="fi" id="pv-note" rows="2" placeholder="es. Valido 30 giorni, consegna inclusa..."></textarea></div>
+    <!-- Articoli preventivo -->
+    <div class="slbl" style="margin-top:4px;">Articoli</div>
+    <div id="pv-items-list"></div>
+    <button class="btn-s" style="margin-bottom:12px;" onclick="openPickArticolo()">＋ Aggiungi articolo</button>
+    <!-- Sconto globale -->
+    <div class="frow">
+      <div class="fg"><span class="fl">Sconto globale €</span><input class="fi" id="pv-sconto" type="number" placeholder="0.00" min="0" step="0.01" oninput="renderPvTotale()"></div>
+      <div class="fg"><span class="fl">Sconto %</span><input class="fi" id="pv-sconto-pct" type="number" placeholder="0" min="0" max="100" oninput="onScontoPct()"></div>
+    </div>
+    <!-- Totale live -->
+    <div class="cart-total-box" id="pv-totale-box" style="margin-bottom:14px;"></div>
+    <button class="btn-p" onclick="savePreventivo()">💾 Salva Preventivo</button>
+    <button class="btn-s" onclick="cm('m-prev')">Annulla</button>
+  </div>
+</div>
+
+<!-- Pick articolo per preventivo -->
+<div class="overlay" id="m-pick-art">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">Aggiungi articolo</div>
+    <div class="search-box" style="margin-bottom:10px;">
+      <input id="pick-art-srch" placeholder="Cerca..." oninput="renderPickArt()">
+      <span class="search-ico">🔍</span>
+    </div>
+    <div id="pick-art-list" style="max-height:55vh;overflow-y:auto;"></div>
+    <button class="btn-s" onclick="cm('m-pick-art')">Annulla</button>
+  </div>
+</div>
+
+<!-- Anteprima e invio preventivo -->
+<div class="overlay" id="m-prev-detail">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div id="m-prev-detail-body"></div>
+  </div>
+</div>
+
+<!-- Impostazioni negozio (per intestazione preventivo) -->
+<div class="overlay" id="m-negozio">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">🏪 Dati Negozio</div>
+    <div class="fg"><span class="fl">Nome negozio</span><input class="fi" id="ng-nome" placeholder="es. Arredamenti Rossi"></div>
+    <div class="fg"><span class="fl">Indirizzo</span><input class="fi" id="ng-indirizzo" placeholder="es. Via Roma 1, Milano"></div>
+    <div class="fg"><span class="fl">Telefono</span><input class="fi" id="ng-tel" placeholder="+39 02..."></div>
+    <div class="fg"><span class="fl">Email</span><input class="fi" id="ng-email" placeholder="info@..."></div>
+    <div class="fg"><span class="fl">Sito web</span><input class="fi" id="ng-web" placeholder="www..."></div>
+    <button class="btn-p" onclick="saveNegozio()">💾 Salva</button>
+    <button class="btn-s" onclick="cm('m-negozio')">Chiudi</button>
+  </div>
+</div>
+
 <!-- Impostazioni PIN -->
 <div class="overlay" id="m-settings">
   <div class="sheet">
@@ -690,16 +816,17 @@ function updateDots() {
 // ═══════════════ TABS ═══════════════
 function switchTab(t) {
   curTab = t;
-  ['inv','scan','mov'].forEach(x=>{
+  ['inv','scan','mov','prev'].forEach(x=>{
     document.getElementById('pg-'+x).style.display = x===t?'block':'none';
     document.getElementById('tb-'+x).classList.toggle('on', x===t);
   });
-  const titles = {inv:'Inventario',scan:'Scanner QR',mov:'Movimenti'};
+  const titles = {inv:'Inventario',scan:'Scanner QR',mov:'Movimenti',prev:'Preventivi'};
   document.getElementById('ttitle').textContent = titles[t];
   if (t==='inv')  { renderStats(); renderList(); }
   if (t==='scan') startScanner();
   else            stopScanner();
   if (t==='mov')  renderMov();
+  if (t==='prev') renderPrevList();
 }
 
 // ═══════════════ STATS & LIST ═══════════════
@@ -1133,10 +1260,28 @@ async function startScannerWithFallback(elementId, onSuccess, onError){
 // ═══════════════ SCANNER (tab) ═══════════════
 function startScanner(){
   if(scanner) return;
+  // Safari richiede HTTPS per accedere alla fotocamera
+  if(location.protocol==='file:'){
+    document.getElementById('scan-result').style.display='block';
+    document.getElementById('scan-result').innerHTML=`
+      <div style="text-align:center;padding:20px;color:var(--amber);font-size:13px;line-height:1.7;">
+        ⚠️ <strong>Fotocamera non disponibile</strong><br><br>
+        Safari richiede <strong>HTTPS</strong> per usare la fotocamera.<br>
+        Apri l'app tramite link web (es. GitHub Pages)<br>invece di un file locale.
+      </div>`;
+    return;
+  }
   const el=document.getElementById('aqr');
   el.innerHTML='';
-  startScannerWithFallback('aqr', onScan, ()=>toast('⚠️ Fotocamera non disponibile'))
-    .then(s=>{ scanner=s; });
+  startScannerWithFallback('aqr', onScan, ()=>{
+    document.getElementById('scan-result').style.display='block';
+    document.getElementById('scan-result').innerHTML=`
+      <div style="text-align:center;padding:16px;color:var(--red);font-size:13px;line-height:1.7;">
+        ⚠️ Fotocamera non disponibile.<br>
+        Controlla i permessi in <strong>Impostazioni → Safari → Fotocamera</strong>
+        e ricarica la pagina.
+      </div>`;
+  }).then(s=>{ scanner=s; });
 }
 function stopScanner(){
   if(scanner){
@@ -1247,6 +1392,292 @@ function savePin(){
   if(p1!==p2){toast('⚠️ I PIN non coincidono');return;}
   PIN=p1; localStorage.setItem('mgz2_pin',PIN);
   cm('m-settings'); toast('✅ PIN aggiornato');
+}
+
+// ═══════════════ PREVENTIVI ═══════════════
+let preventivi = JSON.parse(localStorage.getItem('mgz2_preventivi') || '[]');
+let negozio = JSON.parse(localStorage.getItem('mgz2_negozio') || '{}');
+let pvItems = []; // righe preventivo corrente
+let editPvId = null;
+
+function openNegozio(){
+  document.getElementById('ng-nome').value = negozio.nome||'';
+  document.getElementById('ng-indirizzo').value = negozio.indirizzo||'';
+  document.getElementById('ng-tel').value = negozio.tel||'';
+  document.getElementById('ng-email').value = negozio.email||'';
+  document.getElementById('ng-web').value = negozio.web||'';
+  om('m-negozio');
+}
+function saveNegozio(){
+  negozio = {
+    nome: document.getElementById('ng-nome').value.trim(),
+    indirizzo: document.getElementById('ng-indirizzo').value.trim(),
+    tel: document.getElementById('ng-tel').value.trim(),
+    email: document.getElementById('ng-email').value.trim(),
+    web: document.getElementById('ng-web').value.trim(),
+  };
+  localStorage.setItem('mgz2_negozio', JSON.stringify(negozio));
+  cm('m-negozio'); toast('✅ Dati negozio salvati');
+}
+
+function openNewPreventivo(){
+  editPvId = null;
+  pvItems = [];
+  document.getElementById('pv-cliente').value='';
+  document.getElementById('pv-tel').value='';
+  document.getElementById('pv-email').value='';
+  document.getElementById('pv-note').value='';
+  document.getElementById('pv-sconto').value='';
+  document.getElementById('pv-sconto-pct').value='';
+  document.getElementById('m-prev-title').textContent='Nuovo Preventivo';
+  renderPvItems(); renderPvTotale();
+  om('m-prev');
+}
+
+function openEditPreventivo(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return;
+  editPvId = id;
+  pvItems = pv.items.map(i=>({...i}));
+  document.getElementById('pv-cliente').value = pv.cliente||'';
+  document.getElementById('pv-tel').value = pv.tel||'';
+  document.getElementById('pv-email').value = pv.email||'';
+  document.getElementById('pv-note').value = pv.note||'';
+  document.getElementById('pv-sconto').value = pv.sconto||'';
+  document.getElementById('pv-sconto-pct').value = '';
+  document.getElementById('m-prev-title').textContent='Modifica Preventivo';
+  renderPvItems(); renderPvTotale();
+  cm('m-prev-detail');
+  om('m-prev');
+}
+
+function renderPvItems(){
+  const el = document.getElementById('pv-items-list');
+  if(!pvItems.length){ el.innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px 0 4px;">Nessun articolo aggiunto.</div>'; return; }
+  el.innerHTML = pvItems.map((it,i)=>{
+    const tot = (it.prezzo * it.qty).toFixed(2);
+    return `<div class="pv-item-row">
+      <div style="font-size:20px;">${it.emoji||'📦'}</div>
+      <div class="pv-item-info">
+        <div class="pv-item-name">${it.name}</div>
+        <div class="pv-item-sub">€${parseFloat(it.prezzo).toFixed(2)} cad.</div>
+        <div class="pv-qty-row">
+          <button class="pv-qbtn" onclick="pvAdjQty(${i},-1)">−</button>
+          <input class="pv-qinp" type="number" value="${it.qty}" min="1" onchange="pvSetQty(${i},this.value)">
+          <button class="pv-qbtn" onclick="pvAdjQty(${i},1)">＋</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <div class="pv-item-price">€${tot}</div>
+        <button class="pv-del" onclick="pvRemove(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pvAdjQty(i,d){ pvItems[i].qty=Math.max(1,(pvItems[i].qty||1)+d); renderPvItems(); renderPvTotale(); }
+function pvSetQty(i,v){ pvItems[i].qty=Math.max(1,parseInt(v)||1); renderPvTotale(); }
+function pvRemove(i){ pvItems.splice(i,1); renderPvItems(); renderPvTotale(); }
+
+function onScontoPct(){
+  const pct = parseFloat(document.getElementById('pv-sconto-pct').value)||0;
+  const sub = pvItems.reduce((s,it)=>s+(it.prezzo*it.qty),0);
+  document.getElementById('pv-sconto').value = pct>0 ? (sub*pct/100).toFixed(2) : '';
+  renderPvTotale();
+}
+
+function renderPvTotale(){
+  const sub = pvItems.reduce((s,it)=>s+(it.prezzo*it.qty),0);
+  const sc = parseFloat(document.getElementById('pv-sconto').value)||0;
+  const tot = Math.max(0, sub-sc);
+  const nItems = pvItems.reduce((s,it)=>s+it.qty,0);
+  document.getElementById('pv-totale-box').innerHTML=`
+    <div class="cart-total-row"><span>Articoli</span><span>${nItems} pz</span></div>
+    <div class="cart-total-row"><span>Subtotale</span><span>€${sub.toFixed(2)}</span></div>
+    ${sc>0?`<div class="cart-total-row"><span>Sconto</span><span style="color:var(--green)">−€${sc.toFixed(2)}</span></div>`:''}
+    <div class="cart-total-final"><span>Totale</span><span>€${tot.toFixed(2)}</span></div>`;
+}
+
+function openPickArticolo(){
+  renderPickArt();
+  om('m-pick-art');
+}
+function renderPickArt(){
+  const q = (document.getElementById('pick-art-srch').value||'').toLowerCase();
+  const list = products.filter(p=>p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q));
+  document.getElementById('pick-art-list').innerHTML = list.map(p=>`
+    <div class="pick-row" onclick="addArtToPreventivo('${p.id}')">
+      <div style="font-size:22px;">${p.emoji||'📦'}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;">${p.name}</div>
+        <div style="font-size:11px;color:var(--t2);">${p.sku||''}${p.price?' · €'+parseFloat(p.price).toFixed(2):''}</div>
+      </div>
+    </div>`).join('') || '<div class="empty">Nessun articolo trovato.</div>';
+}
+function addArtToPreventivo(id){
+  const p = products.find(x=>x.id===id); if(!p) return;
+  const ex = pvItems.find(x=>x.productId===id);
+  if(ex){ ex.qty++; }
+  else { pvItems.push({productId:id, name:p.name, emoji:p.emoji||'📦', prezzo:parseFloat(p.price)||0, qty:1}); }
+  renderPvItems(); renderPvTotale();
+  cm('m-pick-art');
+}
+
+function savePreventivo(){
+  const cliente = document.getElementById('pv-cliente').value.trim();
+  if(!cliente){ toast('⚠️ Inserisci il nome cliente'); return; }
+  if(!pvItems.length){ toast('⚠️ Aggiungi almeno un articolo'); return; }
+  const sc = parseFloat(document.getElementById('pv-sconto').value)||0;
+  const sub = pvItems.reduce((s,it)=>s+(it.prezzo*it.qty),0);
+  const tot = Math.max(0,sub-sc);
+  const pv = {
+    id: editPvId || 'PV'+Date.now(),
+    cliente,
+    tel: document.getElementById('pv-tel').value.trim(),
+    email: document.getElementById('pv-email').value.trim(),
+    note: document.getElementById('pv-note').value.trim(),
+    items: pvItems.map(i=>({...i})),
+    sconto: sc, subtotale: sub, totale: tot,
+    data: editPvId ? preventivi.find(x=>x.id===editPvId)?.data : new Date().toISOString(),
+    status: 'bozza'
+  };
+  if(editPvId){ preventivi = preventivi.map(x=>x.id===editPvId?pv:x); }
+  else { preventivi.unshift(pv); }
+  savePrev(); renderPrevList();
+  cm('m-prev'); toast('✅ Preventivo salvato');
+}
+
+function savePrev(){
+  localStorage.setItem('mgz2_preventivi', JSON.stringify(preventivi));
+}
+
+function renderPrevList(){
+  const el = document.getElementById('prev-list');
+  if(!preventivi.length){ el.innerHTML='<div class="empty">Nessun preventivo ancora.<br>Premi "Nuovo preventivo" per iniziare.</div>'; return; }
+  el.innerHTML = preventivi.map(pv=>{
+    const d = new Date(pv.data);
+    const ds = d.toLocaleDateString('it-IT');
+    return `<div class="prev-row" onclick="openPrevDetail('${pv.id}')">
+      <div class="prev-row-head">
+        <div class="prev-cliente">${pv.cliente}</div>
+        <div class="prev-data">${ds}</div>
+      </div>
+      <div class="prev-meta">
+        <span class="prev-totale">€${parseFloat(pv.totale).toFixed(2)}</span>
+        <span class="prev-status ${pv.status}">${pv.status==='inviato'?'✓ Inviato':'Bozza'}</span>
+        <span style="font-size:11px;color:var(--t2);">${pv.items.length} articol${pv.items.length===1?'o':'i'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openPrevDetail(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return;
+  const d = new Date(pv.data).toLocaleDateString('it-IT');
+  const pvNum = 'PV-' + pv.id.slice(-6).toUpperCase();
+
+  const righe = pv.items.map(it=>`
+    <tr>
+      <td>${it.emoji||''} ${it.name}</td>
+      <td style="text-align:center;">${it.qty}</td>
+      <td style="text-align:right;">€${parseFloat(it.prezzo).toFixed(2)}</td>
+      <td style="text-align:right;font-weight:600;">€${(it.prezzo*it.qty).toFixed(2)}</td>
+    </tr>`).join('');
+
+  const negInfoHtml = negozio.nome ? `
+    <div style="font-weight:700;font-size:14px;">${negozio.nome}</div>
+    ${negozio.indirizzo?`<div>${negozio.indirizzo}</div>`:''}
+    ${negozio.tel?`<div>📞 ${negozio.tel}</div>`:''}
+    ${negozio.email?`<div>✉️ ${negozio.email}</div>`:''}
+    ${negozio.web?`<div>🌐 ${negozio.web}</div>`:''}` : '<div style="color:#e09a3a;">⚠️ Configura i dati negozio con il tasto 🏪</div>';
+
+  document.getElementById('m-prev-detail-body').innerHTML=`
+    <div class="handle"></div>
+    <div class="sheet-title">${pv.cliente}</div>
+    <div class="prev-preview">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:11px;color:#666;line-height:1.6;">${negInfoHtml}</div>
+        <div style="text-align:right;font-size:11px;color:#666;">
+          <div style="font-weight:700;font-size:13px;">PREVENTIVO</div>
+          <div>${pvNum}</div>
+          <div>${d}</div>
+        </div>
+      </div>
+      <div style="background:#f0f0f0;border-radius:6px;padding:8px 10px;margin-bottom:12px;font-size:11px;color:#444;">
+        <strong>Cliente:</strong> ${pv.cliente}${pv.tel?' · '+pv.tel:''}${pv.email?' · '+pv.email:''}
+      </div>
+      <table>
+        <thead><tr><th>Articolo</th><th>Qtà</th><th>Prezzo</th><th>Totale</th></tr></thead>
+        <tbody>${righe}</tbody>
+      </table>
+      <div style="text-align:right;font-size:12px;color:#555;line-height:1.8;">
+        Subtotale: €${parseFloat(pv.subtotale).toFixed(2)}<br>
+        ${pv.sconto>0?`Sconto: −€${parseFloat(pv.sconto).toFixed(2)}<br>`:''}
+        <strong style="font-size:15px;color:#111;">Totale: €${parseFloat(pv.totale).toFixed(2)}</strong>
+      </div>
+      ${pv.note?`<div class="note-box">📋 ${pv.note}</div>`:''}
+    </div>
+    <div class="send-btns">
+      <button class="btn-wa" onclick="sendWA('${id}')">📲 WhatsApp</button>
+      <button class="btn-mail" onclick="sendEmail('${id}')">✉️ Email</button>
+    </div>
+    <button class="btn-s" onclick="openEditPreventivo('${id}')">✏️ Modifica</button>
+    <button class="btn-s" onclick="markInviato('${id}')">✓ Segna come inviato</button>
+    <button class="btn-d" onclick="deletePreventivo('${id}')">🗑 Elimina</button>
+    <button class="btn-s" onclick="cm('m-prev-detail')">Chiudi</button>
+  `;
+  om('m-prev-detail');
+}
+
+function buildPvText(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return '';
+  const pvNum = 'PV-' + pv.id.slice(-6).toUpperCase();
+  const d = new Date(pv.data).toLocaleDateString('it-IT');
+  let txt = '';
+  if(negozio.nome) txt += `*${negozio.nome}*\n`;
+  if(negozio.indirizzo) txt += `${negozio.indirizzo}\n`;
+  if(negozio.tel) txt += `📞 ${negozio.tel}\n`;
+  txt += `\n*PREVENTIVO ${pvNum}* — ${d}\n`;
+  txt += `Cliente: ${pv.cliente}\n\n`;
+  txt += `*Articoli:*\n`;
+  pv.items.forEach(it=>{ txt += `• ${it.name} x${it.qty} = €${(it.prezzo*it.qty).toFixed(2)}\n`; });
+  txt += `\nSubtotale: €${parseFloat(pv.subtotale).toFixed(2)}\n`;
+  if(pv.sconto>0) txt += `Sconto: −€${parseFloat(pv.sconto).toFixed(2)}\n`;
+  txt += `*Totale: €${parseFloat(pv.totale).toFixed(2)}*\n`;
+  if(pv.note) txt += `\n📋 ${pv.note}\n`;
+  return txt;
+}
+
+function sendWA(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return;
+  const txt = buildPvText(id);
+  const tel = (pv.tel||'').replace(/\D/g,'');
+  const url = tel
+    ? `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`
+    : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+  markInviato(id);
+  window.open(url,'_blank');
+}
+
+function sendEmail(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return;
+  const pvNum = 'PV-' + pv.id.slice(-6).toUpperCase();
+  const sub = encodeURIComponent(`Preventivo ${pvNum} — ${negozio.nome||''}`.trim());
+  const body = encodeURIComponent(buildPvText(id).replace(/\*/g,''));
+  const to = pv.email||'';
+  markInviato(id);
+  window.open(`mailto:${to}?subject=${sub}&body=${body}`,'_blank');
+}
+
+function markInviato(id){
+  const pv = preventivi.find(x=>x.id===id); if(!pv) return;
+  pv.status='inviato'; savePrev(); renderPrevList();
+}
+
+function deletePreventivo(id){
+  if(!confirm('Eliminare questo preventivo?')) return;
+  preventivi = preventivi.filter(x=>x.id!==id);
+  savePrev(); renderPrevList();
+  cm('m-prev-detail'); toast('🗑 Preventivo eliminato');
 }
 
 // ═══════════════ UTILS ═══════════════
