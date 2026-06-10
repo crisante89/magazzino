@@ -1347,30 +1347,59 @@ async function startScannerWithFallback(elementId, onSuccess, onError){
     Html5QrcodeSupportedFormats.CODE_39,
     Html5QrcodeSupportedFormats.ITF,
   ];
-  const config = {fps:10, qrbox:{width:200,height:200}, formatsToSupport:formats};
+  const config = {fps:15, qrbox:{width:230,height:230}, formatsToSupport:formats};
 
   const instance = new Html5Qrcode(elementId);
 
-  // Unico tentativo: solo facingMode environment, niente constraint avanzati
+  // Avvio con constraint semplici (sicuri su Safari)
   try {
     await instance.start(
       { facingMode: 'environment' },
       config, onSuccess, ()=>{}
     );
+    ottimizzaFotocamera(elementId);
     return instance;
   } catch(e){
-    // Ultimo tentativo: lascia scegliere al browser
     try {
       await instance.start(
-        true, // true = usa fotocamera di default
+        true,
         config, onSuccess, ()=>{}
       );
+      ottimizzaFotocamera(elementId);
       return instance;
     } catch(e2){
       if(onError) onError();
       return null;
     }
   }
+}
+
+// Ottimizza la fotocamera DOPO l'avvio: zoom 2x + messa a fuoco continua.
+// Applicato post-avvio è sicuro: se non supportato viene ignorato senza errori.
+function ottimizzaFotocamera(elementId){
+  setTimeout(()=>{
+    try {
+      const container = document.getElementById(elementId);
+      const video = container ? container.querySelector('video') : null;
+      if(!video || !video.srcObject) return;
+      const track = video.srcObject.getVideoTracks()[0];
+      if(!track || !track.getCapabilities) return;
+      const caps = track.getCapabilities();
+
+      // Zoom 2x: l'inquadratura si avvicina e il QR riempie il riquadro
+      // senza dover avvicinare troppo il telefono (dove l'ottica non mette a fuoco)
+      if(caps.zoom && caps.zoom.max >= 2){
+        track.applyConstraints({ advanced: [{ zoom: 2 }] }).catch(()=>{});
+      } else if(caps.zoom && caps.zoom.max > 1){
+        track.applyConstraints({ advanced: [{ zoom: caps.zoom.max }] }).catch(()=>{});
+      }
+
+      // Messa a fuoco continua
+      if(caps.focusMode && caps.focusMode.includes('continuous')){
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
+      }
+    } catch(e){ /* ignora: dispositivo non supporta */ }
+  }, 600);
 }
 
 // ═══════════════ SCANNER (tab) ═══════════════
