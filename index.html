@@ -603,20 +603,17 @@ textarea.fi{resize:none;}
   <!-- TAB: scanner -->
   <div class="page" id="pg-scan" style="display:none;">
     <div class="scan-page">
-      <div id="vendita-toggle" onclick="toggleVendita()" style="width:100%;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
-        <div>
-          <div style="font-size:14px;font-weight:700;" id="vendita-toggle-label">🛒 Modalità Vendita</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:2px;" id="vendita-toggle-desc">Scansiona in sequenza → tutto nel carrello</div>
+      <div style="width:100%;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--b2);border-radius:var(--r);overflow:hidden;">
+          <div id="mode-carico" onclick="setScanMode('carico')" style="padding:16px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📥 CARICO</div>
+          <div id="mode-scarico" onclick="setScanMode('scarico')" style="padding:16px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📤 SCARICO</div>
         </div>
-        <div id="vendita-toggle-switch" style="width:46px;height:27px;border-radius:14px;background:var(--s3);border:1px solid var(--b2);position:relative;transition:background .2s;">
-          <div id="vendita-toggle-knob" style="width:21px;height:21px;border-radius:50%;background:var(--t2);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
-        </div>
+        <div id="scan-mode-hint" style="font-size:11px;color:var(--t2);text-align:center;margin-top:8px;"></div>
       </div>
       <div class="scan-frame"><div id="aqr"></div></div>
       <div class="scan-caption" id="scan-caption-text">
-        Inquadra il <strong>QR code</strong> o il <strong>codice a barre</strong> di un articolo<br>
-        per registrare un carico o scarico di magazzino.<br><br>
-        Se l'articolo non è ancora collegato, potrai farlo subito.
+        Scansiona con la fotocamera o la pistola Bluetooth:<br>
+        ogni lettura viene applicata <strong>immediatamente</strong>.
       </div>
       <div id="scan-result" style="width:100%;margin-top:16px;"></div>
     </div>
@@ -948,7 +945,7 @@ function switchTab(t) {
   const titles = {inv:'Inventario',scan:'Scanner QR',mov:'Movimenti',prev:'Preventivi'};
   document.getElementById('ttitle').textContent = titles[t];
   if (t==='inv')  { renderStats(); renderList(); }
-  if (t==='scan') startScanner();
+  if (t==='scan') { startScanner(); setScanMode(scanMode); }
   else            stopScanner();
   if (t==='mov')  renderMov();
   if (t==='prev') renderPrevList();
@@ -1491,90 +1488,69 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-// ═══════════════ MODALITÀ VENDITA ═══════════════
-let modVendita = false;
+// ═══════════════ MODALITÀ SCANSIONE RAPIDA (CARICO/SCARICO) ═══════════════
+let scanMode = 'scarico'; // 'carico' | 'scarico'
 let lastRapidScan = { code: '', t: 0 };
 
-function toggleVendita(){
-  modVendita = !modVendita;
-  const sw = document.getElementById('vendita-toggle-switch');
-  const knob = document.getElementById('vendita-toggle-knob');
-  const lbl = document.getElementById('vendita-toggle-label');
-  const desc = document.getElementById('vendita-toggle-desc');
-  if(modVendita){
-    sw.style.background = 'var(--green)';
-    knob.style.left = '22px';
-    knob.style.background = '#fff';
-    lbl.textContent = '🛒 Modalità Vendita ATTIVA';
-    desc.textContent = 'Ogni scansione aggiunge al carrello';
-    toast('🛒 Modalità vendita attiva — scansiona gli articoli');
+function setScanMode(m){
+  scanMode = m;
+  const car = document.getElementById('mode-carico');
+  const sca = document.getElementById('mode-scarico');
+  const hint = document.getElementById('scan-mode-hint');
+  if(m === 'carico'){
+    car.style.background = 'rgba(82,183,136,.18)'; car.style.color = 'var(--green)';
+    sca.style.background = 'var(--s1)'; sca.style.color = 'var(--t2)';
+    hint.textContent = 'Ogni scansione AGGIUNGE +1 alla giacenza';
   } else {
-    sw.style.background = 'var(--s3)';
-    knob.style.left = '2px';
-    knob.style.background = 'var(--t2)';
-    lbl.textContent = '🛒 Modalità Vendita';
-    desc.textContent = 'Scansiona in sequenza → tutto nel carrello';
-    toast('Modalità normale');
+    sca.style.background = 'rgba(224,82,82,.18)'; sca.style.color = 'var(--red)';
+    car.style.background = 'var(--s1)'; car.style.color = 'var(--t2)';
+    hint.textContent = 'Ogni scansione TOGLIE −1 dalla giacenza';
   }
 }
 
-// Gestisce una scansione in modalità vendita: aggiunge al carrello senza aprire nulla
-function scanVendita(val){
+// Applica subito carico o scarico all'articolo scansionato
+function applyRapidScan(p){
   // Debounce: la fotocamera legge lo stesso codice molte volte al secondo
   const now = Date.now();
-  if(val === lastRapidScan.code && now - lastRapidScan.t < 2500) return;
-  lastRapidScan = { code: val, t: now };
+  const key = p.id;
+  if(key === lastRapidScan.code && now - lastRapidScan.t < 2000) return;
+  lastRapidScan = { code: key, t: now };
 
-  const p = products.find(x =>
-    (x.barcode && x.barcode === val) ||
-    (x.shopifyUrl && x.shopifyUrl === val)
-  );
-  if(!p){ toast('⚠️ Articolo non riconosciuto'); return; }
-
-  const inCart = cart.filter(c=>c.productId===p.id).reduce((s,c)=>s+c.qty,0);
-  if(p.qty - inCart <= 0){ toast('⚠️ '+p.name+' — giacenza esaurita'); return; }
-
-  const ex = cart.find(c=>c.productId===p.id);
-  if(ex){ ex.qty++; }
-  else { cart.push({productId:p.id, name:p.name, emoji:p.emoji||'📦', qty:1, price:parseFloat(p.price)||0}); }
-  updateCartFab();
-  const tot = cart.reduce((s,c)=>s+c.qty,0);
-  toast(`🛒 ${p.name} (+1) · ${tot} nel carrello`);
+  if(scanMode === 'carico'){
+    p.qty += 1;
+    addMov(p.id, p.name, 1, 'carico rapido');
+    save(); renderStats();
+    toast(`📥 ${p.name} +1 · giacenza: ${p.qty}`);
+  } else {
+    if(p.qty <= 0){ toast(`⚠️ ${p.name} — già esaurito`); return; }
+    p.qty -= 1;
+    addMov(p.id, p.name, -1, 'scarico rapido');
+    save(); renderStats();
+    toast(`📤 ${p.name} −1 · giacenza: ${p.qty}`);
+  }
 }
 
 function onScan(raw){
   const val=raw.trim();
 
-  // ── MODALITÀ VENDITA: aggiungi al carrello e continua a scansionare ──
-  if(modVendita){
-    scanVendita(val);
-    return; // NON fermare lo scanner, NON aprire modali
+  // ── Articolo riconosciuto → carico/scarico immediato secondo lo switch ──
+  const known = products.find(x =>
+    (x.barcode && x.barcode === val) ||
+    (x.shopifyUrl && x.shopifyUrl === val)
+  );
+  if(known){
+    applyRapidScan(known);
+    return; // lo scanner continua, pronto per il prossimo articolo
   }
 
-  // 1) Cerca per QR già collegato
-  if(!isBarcode(val)){
-    const found=products.find(p=>p.shopifyUrl && p.shopifyUrl===val);
-    if(found){ stopScanner(); openDet(found.id); return; }
-    // QR non collegato → proponi collegamento
-    stopScanner(); pendingUrl=val; pendingBarcode=null;
-    openLinkModal('qr', val);
-    return;
-  }
-
-  // 2) Cerca per codice a barre
-  const byBar=products.find(p=>p.barcode && p.barcode===val);
-  if(byBar){ stopScanner(); openDet(byBar.id); return; }
-
-  // 3) Sembra un barcode classico → proponi collegamento come barcode
+  // ── Codice sconosciuto → proponi collegamento ──
   if(isBarcode(val)){
     stopScanner(); pendingBarcode=val; pendingUrl=null;
     openLinkModal('barcode', val);
-    return;
+  } else {
+    stopScanner(); pendingUrl=val; pendingBarcode=null;
+    openLinkModal('qr', val);
   }
-
-  // 4) QR con testo generico lungo → tratta come QR
-  stopScanner(); pendingUrl=val; pendingBarcode=null;
-  openLinkModal('qr', val);
 }
 
 function normalizeUrl(u){
