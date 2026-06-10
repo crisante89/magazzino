@@ -603,8 +603,17 @@ textarea.fi{resize:none;}
   <!-- TAB: scanner -->
   <div class="page" id="pg-scan" style="display:none;">
     <div class="scan-page">
+      <div id="vendita-toggle" onclick="toggleVendita()" style="width:100%;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+        <div>
+          <div style="font-size:14px;font-weight:700;" id="vendita-toggle-label">🛒 Modalità Vendita</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;" id="vendita-toggle-desc">Scansiona in sequenza → tutto nel carrello</div>
+        </div>
+        <div id="vendita-toggle-switch" style="width:46px;height:27px;border-radius:14px;background:var(--s3);border:1px solid var(--b2);position:relative;transition:background .2s;">
+          <div id="vendita-toggle-knob" style="width:21px;height:21px;border-radius:50%;background:var(--t2);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
+        </div>
+      </div>
       <div class="scan-frame"><div id="aqr"></div></div>
-      <div class="scan-caption">
+      <div class="scan-caption" id="scan-caption-text">
         Inquadra il <strong>QR code</strong> o il <strong>codice a barre</strong> di un articolo<br>
         per registrare un carico o scarico di magazzino.<br><br>
         Se l'articolo non è ancora collegato, potrai farlo subito.
@@ -1444,8 +1453,103 @@ function stopAllScanners(){
   });
 }
 
+// ═══════════════ PISTOLA BARCODE BLUETOOTH ═══════════════
+// I lettori Bluetooth emulano una tastiera: digitano il codice velocissimo
+// e terminano con Invio. Questo listener cattura quella sequenza ovunque nell'app.
+let gunBuffer = '';
+let gunLastKey = 0;
+
+document.addEventListener('keydown', function(e){
+  // Se l'utente sta scrivendo in un campo di testo, non interferire
+  const ae = document.activeElement;
+  const isTyping = ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA');
+
+  const now = Date.now();
+  // Le pistole digitano con <50ms tra i tasti; un umano è più lento.
+  // Se è passato troppo tempo, ricomincia il buffer.
+  if(now - gunLastKey > 100) gunBuffer = '';
+  gunLastKey = now;
+
+  if(e.key === 'Enter'){
+    // Se l'utente è dentro un campo di testo, la pistola sta riempiendo
+    // quel campo (es. campo barcode nel form): non interferire
+    if(isTyping){ gunBuffer=''; return; }
+    // Fine scansione: se il buffer sembra un codice valido, processalo
+    if(gunBuffer.length >= 4){
+      const code = gunBuffer;
+      gunBuffer = '';
+      e.preventDefault();
+      toast('🔫 Letto: ' + code);
+      onScan(code);
+    }
+    return;
+  }
+
+  // Accumula solo caratteri stampabili singoli
+  if(e.key.length === 1){
+    gunBuffer += e.key;
+  }
+});
+
+// ═══════════════ MODALITÀ VENDITA ═══════════════
+let modVendita = false;
+let lastRapidScan = { code: '', t: 0 };
+
+function toggleVendita(){
+  modVendita = !modVendita;
+  const sw = document.getElementById('vendita-toggle-switch');
+  const knob = document.getElementById('vendita-toggle-knob');
+  const lbl = document.getElementById('vendita-toggle-label');
+  const desc = document.getElementById('vendita-toggle-desc');
+  if(modVendita){
+    sw.style.background = 'var(--green)';
+    knob.style.left = '22px';
+    knob.style.background = '#fff';
+    lbl.textContent = '🛒 Modalità Vendita ATTIVA';
+    desc.textContent = 'Ogni scansione aggiunge al carrello';
+    toast('🛒 Modalità vendita attiva — scansiona gli articoli');
+  } else {
+    sw.style.background = 'var(--s3)';
+    knob.style.left = '2px';
+    knob.style.background = 'var(--t2)';
+    lbl.textContent = '🛒 Modalità Vendita';
+    desc.textContent = 'Scansiona in sequenza → tutto nel carrello';
+    toast('Modalità normale');
+  }
+}
+
+// Gestisce una scansione in modalità vendita: aggiunge al carrello senza aprire nulla
+function scanVendita(val){
+  // Debounce: la fotocamera legge lo stesso codice molte volte al secondo
+  const now = Date.now();
+  if(val === lastRapidScan.code && now - lastRapidScan.t < 2500) return;
+  lastRapidScan = { code: val, t: now };
+
+  const p = products.find(x =>
+    (x.barcode && x.barcode === val) ||
+    (x.shopifyUrl && x.shopifyUrl === val)
+  );
+  if(!p){ toast('⚠️ Articolo non riconosciuto'); return; }
+
+  const inCart = cart.filter(c=>c.productId===p.id).reduce((s,c)=>s+c.qty,0);
+  if(p.qty - inCart <= 0){ toast('⚠️ '+p.name+' — giacenza esaurita'); return; }
+
+  const ex = cart.find(c=>c.productId===p.id);
+  if(ex){ ex.qty++; }
+  else { cart.push({productId:p.id, name:p.name, emoji:p.emoji||'📦', qty:1, price:parseFloat(p.price)||0}); }
+  updateCartFab();
+  const tot = cart.reduce((s,c)=>s+c.qty,0);
+  toast(`🛒 ${p.name} (+1) · ${tot} nel carrello`);
+}
+
 function onScan(raw){
   const val=raw.trim();
+
+  // ── MODALITÀ VENDITA: aggiungi al carrello e continua a scansionare ──
+  if(modVendita){
+    scanVendita(val);
+    return; // NON fermare lo scanner, NON aprire modali
+  }
 
   // 1) Cerca per QR già collegato
   if(!isBarcode(val)){
