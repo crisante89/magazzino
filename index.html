@@ -836,6 +836,7 @@ textarea.fi{resize:none;}
       📋 Descrizione originale: <span id="ddt-new-raw" style="color:var(--t1);font-style:italic;"></span>
     </div>
     <div class="fg"><span class="fl">Nome articolo *</span><input class="fi" id="ddt-new-nome" placeholder="es. Divano Chester"></div>
+    <div class="fg"><span class="fl">Codice articolo (dalla bolla)</span><input class="fi" id="ddt-new-codice" placeholder="es. ART-1234"></div>
     <div class="frow">
       <div class="fg"><span class="fl">Marca</span><input class="fi" id="ddt-new-brand" placeholder="es. Natuzzi"></div>
       <div class="fg"><span class="fl">Categoria</span><input class="fi" id="ddt-new-cat" placeholder="es. Divani"></div>
@@ -1563,10 +1564,10 @@ async function onDdtFoto(input){
 Il mio magazzino contiene questi articoli:
 ${listaArticoli||'(nessun articolo ancora)'}
 
-Estrai ogni riga del documento con: descrizione originale, quantità, e quale articolo del mio magazzino corrisponde meglio (usa l'ID esatto).
+Estrai ogni riga del documento con: descrizione originale, quantità, codice articolo (se presente nella riga: codice fornitore, riferimento, SKU o simile), e quale articolo del mio magazzino corrisponde meglio (usa l'ID esatto).
 
 Rispondi SOLO con questo JSON:
-{"righe":[{"raw":"descrizione originale","qty":1,"matchId":"ID_o_null"}]}
+{"righe":[{"raw":"descrizione originale","qty":1,"codice":"codice_articolo_o_stringa_vuota","matchId":"ID_o_null"}]}
 
 Se un articolo non corrisponde a nessuno in magazzino usa matchId: null.`;
   try{
@@ -1602,7 +1603,7 @@ function renderDdtRighe(){
     const isNew=r.isNew;
     return `<div class="ddt-riga">
       <div class="ddt-riga-raw">📋 "${r.raw}"</div>
-      <div class="ddt-riga-qty">Quantità: ${r.qty}</div>
+      <div class="ddt-riga-qty">Quantità: ${r.qty}${r.codice?` · Cod: ${r.codice}`:''}</div>
       ${matched
         ?`<div class="ddt-match selected">
             <div style="font-size:20px;">${matched.emoji||'📦'}</div>
@@ -1684,6 +1685,7 @@ function openNuovoArticoloDDT(i){
   // Precompila con la descrizione dal DDT
   document.getElementById('ddt-new-raw').textContent = r.raw;
   document.getElementById('ddt-new-nome').value = r.raw;
+  document.getElementById('ddt-new-codice').value = r.codice||'';
   document.getElementById('ddt-new-brand').value = '';
   document.getElementById('ddt-new-cat').value = '';
   document.getElementById('ddt-new-price').value = '';
@@ -1700,7 +1702,8 @@ function salvaNuovoArticoloDDT(){
   if(!nome){ toast('⚠️ Inserisci il nome'); return; }
   // Crea il nuovo articolo (senza giacenza — verrà caricata dal DDT)
   const id = 'ART'+Date.now();
-  const sku = 'SKU-'+Math.random().toString(36).substr(2,5).toUpperCase();
+  const codice = document.getElementById('ddt-new-codice').value.trim();
+  const sku = codice || ('SKU-'+Math.random().toString(36).substr(2,5).toUpperCase());
   const p = {
     id, sku, name: nome,
     brand: document.getElementById('ddt-new-brand').value.trim(),
