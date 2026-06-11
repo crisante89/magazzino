@@ -708,13 +708,6 @@ textarea.fi{resize:none;}
         <button type="button" onclick="openFormScanner('barcode')" style="height:42px;padding:0 13px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);color:var(--t1);font-size:18px;cursor:pointer;flex-shrink:0;">📷</button>
       </div>
     </div>
-    <div class="fg">
-      <span class="fl">QR Code (URL, testo o codice — opzionale)</span>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input class="fi" id="fu" placeholder="es. https://... oppure qualsiasi testo/codice" style="flex:1;">
-        <button type="button" onclick="openFormScanner('shopify')" style="height:42px;padding:0 13px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);color:var(--t1);font-size:18px;cursor:pointer;flex-shrink:0;" title="Scansiona QR">📷</button>
-      </div>
-    </div>
     <button class="btn-p" onclick="saveProd()">💾 Salva Articolo</button>
     <button class="btn-d" id="bdel" onclick="delProd()" style="display:none;">🗑 Elimina Articolo</button>
     <button class="btn-s" onclick="cm('m-prod')">Annulla</button>
@@ -1575,7 +1568,7 @@ function showLastScan(p, label, color){
 function applyRapidScan(p){
   const now = Date.now();
   const key = p.id;
-  if(key === lastRapidScan.code && now - lastRapidScan.t < 2000) return;
+  if(key === lastRapidScan.code && now - lastRapidScan.t < 800) return;
   lastRapidScan = { code: key, t: now };
 
   if(scanMode === 'carico'){
