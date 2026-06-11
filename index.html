@@ -1788,28 +1788,34 @@ async function avviaImportUrl(){
   }
   showImportStep('loading');
 
-  const prompt = `Visita questa pagina prodotto: ${url}
+  const prompt = `Leggi attentamente questa pagina prodotto: ${url}
 
-Estrai queste informazioni dalla pagina ed restituisci SOLO un JSON valido, senza testo aggiuntivo:
-- nome/titolo del prodotto
-- codice SKU (se presente)
-- codice EAN o codice a barre (se presente)
-- marca (se presente)
-- prezzo (solo numero, se presente)
+Devi estrarre TUTTI questi dati esaminando l'intero contenuto della pagina, comprese le sezioni "specifiche tecniche", "dettagli prodotto", "informazioni aggiuntive" dove spesso si trovano SKU ed EAN:
 
-Rispondi SOLO con questo JSON:
+1. NOME/TITOLO del prodotto
+2. SKU (codice articolo / codice prodotto / cod. art. / reference / part number)
+3. EAN (codice a barre / EAN / EAN13 / GTIN / codice a barre — è un numero di 8 o 13 cifre)
+4. MARCA / brand / produttore
+5. PREZZO (solo il numero)
+
+L'EAN e lo SKU sono spesso nelle specifiche tecniche o sotto la descrizione: cercali con attenzione. L'EAN è quasi sempre un numero lungo 13 cifre (a volte 8).
+
+Rispondi ESCLUSIVAMENTE con questo JSON, niente altro testo:
 {"nome":"...","sku":"...","ean":"...","brand":"...","price":"..."}
 
-Usa stringa vuota "" per i campi che non trovi.`;
+Usa "" solo se davvero il dato non è presente nella pagina.`;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','anthropic-beta':'web-fetch-2025-09-10'},
       body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:1024,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
+        model:'claude-sonnet-4-6',
+        max_tokens:1500,
+        tools:[
+          {type:'web_fetch_20250910',name:'web_fetch',max_uses:3},
+          {type:'web_search_20250305',name:'web_search'}
+        ],
         messages:[{role:'user',content:prompt}]
       })
     });
@@ -1820,8 +1826,8 @@ Usa stringa vuota "" per i campi che non trovi.`;
     try { parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); }
     catch(e1){
       const m = text.match(/\{[\s\S]*\}/);
-      if(m){ try{ parsed = JSON.parse(m[0]); }catch(e2){ throw new Error('Impossibile leggere i dati dalla pagina.'); } }
-      else throw new Error('Nessun dato trovato nella pagina.');
+      if(m){ try{ parsed = JSON.parse(m[0]); }catch(e2){ throw new Error('Impossibile leggere i dati dalla pagina. Prova un altro URL o inserisci a mano.'); } }
+      else throw new Error('Nessun dato trovato. La pagina potrebbe bloccare la lettura automatica.');
     }
     // Precompila il form
     document.getElementById('import-nome').value = parsed.nome||'';
