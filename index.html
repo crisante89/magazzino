@@ -1032,7 +1032,7 @@ function renderList() {
 // ═══════════════ NEW / EDIT PRODUCT ═══════════════
 function openNew() {
   editId=null; selEmoji='📦';
-  ['fn','fb','fc','fp','fq','fm','fcl','fd','fsk','fu'].forEach(id=>{
+  ['fn','fb','fc','fp','fq','fm','fcl','fd','fsk','fbar'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.querySelectorAll('.eopt').forEach(e=>e.classList.toggle('on',e.dataset.e==='📦'));
@@ -1054,7 +1054,6 @@ function openEdit(id) {
   document.getElementById('fd').value=p.dims||'';
   document.getElementById('fsk').value=p.sku||'';
   document.getElementById('fbar').value=p.barcode||'';
-  document.getElementById('fu').value=p.shopifyUrl||'';
   document.querySelectorAll('.eopt').forEach(e=>e.classList.toggle('on',e.dataset.e===selEmoji));
   document.getElementById('m-prod-title').textContent='Modifica Articolo';
   document.getElementById('bdel').style.display='block';
@@ -1069,12 +1068,6 @@ function selE(el) {
 function saveProd() {
   const name=(document.getElementById('fn').value||'').trim();
   if(!name){toast('⚠️ Inserisci il nome');return;}
-  const shopifyUrl = (document.getElementById('fu').value||'').trim();
-  // check url duplicato su altro prodotto
-  if(shopifyUrl) {
-    const dup = products.find(x=>x.shopifyUrl===shopifyUrl && x.id!==editId);
-    if(dup){toast('⚠️ URL già collegato a "'+dup.name+'"');return;}
-  }
   if(editId){
     const p=products.find(x=>x.id===editId);
     const oldQ=p.qty;
@@ -1087,7 +1080,6 @@ function saveProd() {
     p.dims=document.getElementById('fd').value.trim();
     p.sku=document.getElementById('fsk').value.trim()||p.sku;
     p.barcode=(document.getElementById('fbar').value||'').trim();
-    p.shopifyUrl=shopifyUrl;
     p.emoji=selEmoji;
     if(p.qty!==oldQ) addMov(p.id,p.name,p.qty-oldQ,'rettifica manuale');
   } else {
@@ -1103,7 +1095,7 @@ function saveProd() {
       color:document.getElementById('fcl').value.trim(),
       dims:document.getElementById('fd').value.trim(),
       barcode:(document.getElementById('fbar').value||'').trim(),
-      shopifyUrl,emoji:selEmoji,
+      shopifyUrl:'',emoji:selEmoji,
       createdAt:new Date().toISOString()
     };
     products.push(p);
@@ -1372,13 +1364,8 @@ function openFormScanner(mode){
 
 function onFormScan(raw){
   const val = raw.trim();
-  if(formScanMode==='barcode'){
-    document.getElementById('fbar').value = val;
-    toast('✅ Codice letto: ' + val);
-  } else {
-    document.getElementById('fu').value = val;
-    toast('✅ QR acquisito');
-  }
+  document.getElementById('fbar').value = val;
+  toast('✅ Codice letto: ' + val);
   closeFormScanner();
 }
 
