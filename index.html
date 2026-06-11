@@ -602,20 +602,31 @@ textarea.fi{resize:none;}
 
   <!-- TAB: scanner -->
   <div class="page" id="pg-scan" style="display:none;">
-    <div class="scan-page">
-      <div style="width:100%;margin-bottom:14px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--b2);border-radius:var(--r);overflow:hidden;">
-          <div id="mode-carico" onclick="setScanMode('carico')" style="padding:16px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📥 CARICO</div>
-          <div id="mode-scarico" onclick="setScanMode('scarico')" style="padding:16px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📤 SCARICO</div>
+    <div style="padding:8px 0 16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--b2);border-radius:var(--r);overflow:hidden;margin-bottom:10px;">
+        <div id="mode-carico" onclick="setScanMode('carico')" style="padding:18px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📥 CARICO</div>
+        <div id="mode-scarico" onclick="setScanMode('scarico')" style="padding:18px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--s1);color:var(--t2);">📤 SCARICO</div>
+      </div>
+      <div id="scan-mode-hint" style="font-size:12px;color:var(--t2);text-align:center;margin-bottom:24px;"></div>
+
+      <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:24px;text-align:center;">
+        <div style="font-size:52px;margin-bottom:12px;">🔫</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Pronta alla scansione</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;">
+          Punta la pistola Bluetooth sull'articolo.<br>
+          Il risultato viene applicato <strong>immediatamente</strong>.<br><br>
+          In modalità <span style="color:var(--red);font-weight:600;">SCARICO</span> gli articoli<br>
+          vanno nel carrello — confermi tu quando incassi.
         </div>
-        <div id="scan-mode-hint" style="font-size:11px;color:var(--t2);text-align:center;margin-top:8px;"></div>
       </div>
-      <div class="scan-frame"><div id="aqr"></div></div>
-      <div class="scan-caption" id="scan-caption-text">
-        Scansiona con la fotocamera o la pistola Bluetooth:<br>
-        ogni lettura viene applicata <strong>immediatamente</strong>.
+
+      <div id="last-scan-box" style="display:none;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:14px 16px;margin-top:14px;display:flex;align-items:center;gap:12px;">
+        <div id="last-scan-emoji" style="font-size:28px;">📦</div>
+        <div style="flex:1;">
+          <div id="last-scan-name" style="font-size:14px;font-weight:700;"></div>
+          <div id="last-scan-detail" style="font-size:12px;color:var(--t2);margin-top:2px;"></div>
+        </div>
       </div>
-      <div id="scan-result" style="width:100%;margin-top:16px;"></div>
     </div>
   </div>
 
@@ -748,12 +759,20 @@ textarea.fi{resize:none;}
       <div class="sheet-title" style="margin:0;">🛒 Riepilogo Vendita</div>
       <button class="btn-s" style="width:auto;margin:0;padding:6px 14px;font-size:12px;" onclick="clearCart()">Svuota</button>
     </div>
+    <div class="frow" style="margin-bottom:10px;">
+      <div class="fg" style="margin-bottom:0;"><span class="fl">Cliente (opzionale)</span><input class="fi" id="cart-cliente" placeholder="es. Mario Rossi"></div>
+      <div class="fg" style="margin-bottom:0;"><span class="fl">Tel / WhatsApp</span><input class="fi" id="cart-tel" placeholder="+39 333..." type="tel"></div>
+    </div>
     <div class="no-price-warn" id="no-price-warn">⚠️ Alcuni articoli non hanno un prezzo impostato — verranno esclusi dal totale.</div>
     <div id="cart-items-list"></div>
     <div class="cart-total-box" id="cart-total-box"></div>
     <div class="fg" style="margin-top:10px;">
       <span class="fl">Sconto € (opzionale)</span>
       <input class="fi" id="cart-discount" type="number" placeholder="0.00" min="0" step="0.01" oninput="renderCart()">
+    </div>
+    <div class="send-btns" style="margin-top:12px;">
+      <button class="btn-wa" onclick="sendCartWA()">📲 Invia WhatsApp</button>
+      <button class="btn-mail" onclick="sendCartEmail()">✉️ Invia Email</button>
     </div>
     <button class="btn-confirm-sale" onclick="confirmSale()">✓ Conferma e Scarica Magazzino</button>
     <button class="btn-s" onclick="cm('m-cart')">Continua ad aggiungere</button>
@@ -945,8 +964,7 @@ function switchTab(t) {
   const titles = {inv:'Inventario',scan:'Scanner QR',mov:'Movimenti',prev:'Preventivi'};
   document.getElementById('ttitle').textContent = titles[t];
   if (t==='inv')  { renderStats(); renderList(); }
-  if (t==='scan') { startScanner(); setScanMode(scanMode); }
-  else            stopScanner();
+  if (t==='scan') setScanMode(scanMode);
   if (t==='mov')  renderMov();
   if (t==='prev') renderPrevList();
 }
@@ -1250,6 +1268,41 @@ function removeFromCart(i){
   renderCart();
 }
 
+function buildCartText(){
+  const cliente = (document.getElementById('cart-cliente').value||'').trim();
+  const discount = parseFloat(document.getElementById('cart-discount').value)||0;
+  const subtotal = cart.reduce((s,c)=>s+(c.price?c.price*c.qty:0),0);
+  const total = Math.max(0, subtotal-discount);
+  let txt = '';
+  if(negozio.nome) txt += `*${negozio.nome}*\n`;
+  if(negozio.indirizzo) txt += `${negozio.indirizzo}\n`;
+  if(negozio.tel) txt += `📞 ${negozio.tel}\n`;
+  txt += `\n*Riepilogo Vendita*\n`;
+  if(cliente) txt += `Cliente: ${cliente}\n`;
+  txt += `\n*Articoli:*\n`;
+  cart.forEach(c=>{ txt += `• ${c.emoji} ${c.name} x${c.qty}${c.price?' = €'+(c.price*c.qty).toFixed(2):''}\n`; });
+  txt += `\nSubtotale: €${subtotal.toFixed(2)}\n`;
+  if(discount>0) txt += `Sconto: −€${discount.toFixed(2)}\n`;
+  txt += `*Totale: €${total.toFixed(2)}*\n`;
+  return txt;
+}
+
+function sendCartWA(){
+  if(!cart.length){ toast('⚠️ Carrello vuoto'); return; }
+  const tel = (document.getElementById('cart-tel').value||'').replace(/\D/g,'');
+  const txt = buildCartText();
+  const url = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(txt)}` : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+  window.open(url,'_blank');
+}
+
+function sendCartEmail(){
+  if(!cart.length){ toast('⚠️ Carrello vuoto'); return; }
+  const cliente = (document.getElementById('cart-cliente').value||'').trim();
+  const sub = encodeURIComponent(`Riepilogo vendita${cliente?' — '+cliente:''}${negozio.nome?' | '+negozio.nome:''}`);
+  const body = encodeURIComponent(buildCartText().replace(/\*/g,''));
+  window.open(`mailto:?subject=${sub}&body=${body}`,'_blank');
+}
+
 function clearCart(){
   if(!confirm('Svuotare il carrello?')) return;
   cart=[];
@@ -1509,8 +1562,17 @@ function setScanMode(m){
 }
 
 // Applica subito carico o scarico all'articolo scansionato
+function showLastScan(p, label, color){
+  const box = document.getElementById('last-scan-box');
+  if(!box) return;
+  box.style.display = 'flex';
+  box.style.borderColor = color;
+  document.getElementById('last-scan-emoji').textContent = p.emoji||'📦';
+  document.getElementById('last-scan-name').textContent = p.name;
+  document.getElementById('last-scan-detail').textContent = label;
+}
+
 function applyRapidScan(p){
-  // Debounce: la fotocamera legge lo stesso codice molte volte al secondo
   const now = Date.now();
   const key = p.id;
   if(key === lastRapidScan.code && now - lastRapidScan.t < 2000) return;
@@ -1520,13 +1582,20 @@ function applyRapidScan(p){
     p.qty += 1;
     addMov(p.id, p.name, 1, 'carico rapido');
     save(); renderStats();
+    showLastScan(p, `📥 Carico +1 · giacenza: ${p.qty}`, 'var(--green)');
     toast(`📥 ${p.name} +1 · giacenza: ${p.qty}`);
   } else {
     if(p.qty <= 0){ toast(`⚠️ ${p.name} — già esaurito`); return; }
-    p.qty -= 1;
-    addMov(p.id, p.name, -1, 'scarico rapido');
-    save(); renderStats();
-    toast(`📤 ${p.name} −1 · giacenza: ${p.qty}`);
+    const inCart = cart.filter(c=>c.productId===p.id).reduce((s,c)=>s+c.qty,0);
+    if(p.qty - inCart <= 0){ toast(`⚠️ ${p.name} — giacenza esaurita`); return; }
+    const ex = cart.find(c=>c.productId===p.id);
+    if(ex){ ex.qty++; }
+    else { cart.push({productId:p.id, name:p.name, emoji:p.emoji||'📦', qty:1, price:parseFloat(p.price)||0}); }
+    updateCartFab();
+    const totPz = cart.reduce((s,c)=>s+c.qty, 0);
+    const totEur = cart.reduce((s,c)=>s+(c.price*c.qty), 0);
+    showLastScan(p, `🛒 Nel carrello · ${totPz} pz · €${totEur.toFixed(2)}`, 'var(--red)');
+    toast(`🛒 ${p.name} +1 · ${totPz} pz · €${totEur.toFixed(2)}`);
   }
 }
 
