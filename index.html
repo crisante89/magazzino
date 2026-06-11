@@ -554,6 +554,11 @@ textarea.fi{resize:none;}
           📄 Carica DDT con AI
         </button>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button onclick="openImportUrl()" style="flex:1;background:var(--s1);border:1px solid var(--b2);border-radius:var(--rs);padding:10px;font-size:13px;font-weight:600;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          🔗 Aggiungi da URL prodotto
+        </button>
+      </div>
     <div class="stats-grid">
       <div class="stat"><div class="stat-lbl">Articoli</div><div class="stat-val c-gold" id="st-tot">0</div></div>
       <div class="stat"><div class="stat-lbl">Non collegati</div><div class="stat-val c-amber" id="st-unl">0</div></div>
@@ -844,6 +849,63 @@ textarea.fi{resize:none;}
     </div>
     <button class="btn-p" onclick="saveNegozio()">💾 Salva</button>
     <button class="btn-s" onclick="cm('m-negozio')">Chiudi</button>
+  </div>
+</div>
+
+<!-- Import da URL prodotto -->
+<div class="overlay" id="m-import-url">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">🔗 Aggiungi da URL prodotto</div>
+    <div id="import-step-input">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.6;">
+        Incolla l'indirizzo della pagina del prodotto.<br>L'AI leggerà titolo, SKU e codice EAN automaticamente.
+      </div>
+      <div class="fg"><span class="fl">URL prodotto</span><input class="fi" id="import-url-field" placeholder="https://..." type="url" inputmode="url"></div>
+      <button class="btn-p" onclick="avviaImportUrl()">🔍 Leggi pagina</button>
+      <button class="btn-s" onclick="cm('m-import-url')">Annulla</button>
+    </div>
+    <div id="import-step-loading" style="display:none;text-align:center;padding:32px 0;">
+      <div style="font-size:48px;margin-bottom:14px;">🤖</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Lettura pagina in corso...</div>
+      <div style="font-size:12px;color:var(--t2);">L'AI sta analizzando il prodotto</div>
+    </div>
+    <div id="import-step-result" style="display:none;">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Controlla e completa i dati estratti:</div>
+      <div class="fg"><span class="fl">Nome articolo *</span><input class="fi" id="import-nome" placeholder="Titolo prodotto"></div>
+      <div class="frow">
+        <div class="fg"><span class="fl">SKU</span><input class="fi" id="import-sku" placeholder="SKU"></div>
+        <div class="fg"><span class="fl">Codice EAN</span><input class="fi" id="import-ean" placeholder="EAN/barcode"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><span class="fl">Marca</span><input class="fi" id="import-brand" placeholder="Marca"></div>
+        <div class="fg"><span class="fl">Prezzo €</span><input class="fi" id="import-price" type="number" placeholder="0.00"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><span class="fl">Giacenza iniziale</span><input class="fi" id="import-qty" type="number" placeholder="0" min="0"></div>
+        <div class="fg"><span class="fl">Scorta minima</span><input class="fi" id="import-minqty" type="number" placeholder="1" min="0"></div>
+      </div>
+      <div class="fg">
+        <span class="fl">Icona</span>
+        <div class="erow" id="import-epick">
+          <div class="eopt on" data-e="📦" onclick="selImportE(this)">📦</div>
+          <div class="eopt" data-e="🪑" onclick="selImportE(this)">🪑</div>
+          <div class="eopt" data-e="🛋️" onclick="selImportE(this)">🛋️</div>
+          <div class="eopt" data-e="🖼️" onclick="selImportE(this)">🖼️</div>
+          <div class="eopt" data-e="💡" onclick="selImportE(this)">💡</div>
+          <div class="eopt" data-e="🪞" onclick="selImportE(this)">🪞</div>
+          <div class="eopt" data-e="🛏️" onclick="selImportE(this)">🛏️</div>
+          <div class="eopt" data-e="🪴" onclick="selImportE(this)">🪴</div>
+        </div>
+      </div>
+      <button class="btn-p" onclick="salvaImportUrl()">💾 Crea articolo</button>
+      <button class="btn-s" onclick="resetImportUrl()">↩ Nuovo URL</button>
+    </div>
+    <div id="import-step-error" style="display:none;text-align:center;padding:24px 0;">
+      <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+      <div id="import-err-msg" style="font-size:13px;color:var(--red);margin-bottom:14px;"></div>
+      <button class="btn-s" onclick="resetImportUrl()">Riprova</button>
+    </div>
   </div>
 </div>
 
@@ -1687,6 +1749,123 @@ function savePin(){
   if(p1!==p2){toast('⚠️ I PIN non coincidono');return;}
   PIN=p1; localStorage.setItem('mgz2_pin',PIN);
   cm('m-settings'); toast('✅ PIN aggiornato');
+}
+
+// ═══════════════ IMPORT DA URL PRODOTTO ═══════════════
+let importEmoji = '📦';
+
+function selImportE(el){
+  document.querySelectorAll('#import-epick .eopt').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on'); importEmoji = el.dataset.e;
+}
+
+function openImportUrl(){
+  document.getElementById('import-url-field').value='';
+  showImportStep('input');
+  om('m-import-url');
+}
+
+function resetImportUrl(){
+  document.getElementById('import-url-field').value='';
+  showImportStep('input');
+}
+
+function showImportStep(step){
+  ['input','loading','result','error'].forEach(s=>{
+    const el = document.getElementById('import-step-'+s);
+    if(el) el.style.display = s===step?'block':'none';
+  });
+}
+
+async function avviaImportUrl(){
+  const url = (document.getElementById('import-url-field').value||'').trim();
+  if(!url || !/^https?:\/\//.test(url)){ toast('⚠️ Inserisci un URL valido'); return; }
+  const apiKey = localStorage.getItem('mgz2_apikey')||'';
+  if(!apiKey){
+    showImportStep('error');
+    document.getElementById('import-err-msg').textContent='API key non configurata. Premi 🏪 e inserisci la chiave.';
+    return;
+  }
+  showImportStep('loading');
+
+  const prompt = `Visita questa pagina prodotto: ${url}
+
+Estrai queste informazioni dalla pagina ed restituisci SOLO un JSON valido, senza testo aggiuntivo:
+- nome/titolo del prodotto
+- codice SKU (se presente)
+- codice EAN o codice a barre (se presente)
+- marca (se presente)
+- prezzo (solo numero, se presente)
+
+Rispondi SOLO con questo JSON:
+{"nome":"...","sku":"...","ean":"...","brand":"...","price":"..."}
+
+Usa stringa vuota "" per i campi che non trovi.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1024,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!resp.ok){ const err=await resp.json(); throw new Error(err.error?.message||'Errore API'); }
+    const data = await resp.json();
+    const text = data.content.map(c=>c.text||'').join('');
+    let parsed;
+    try { parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); }
+    catch(e1){
+      const m = text.match(/\{[\s\S]*\}/);
+      if(m){ try{ parsed = JSON.parse(m[0]); }catch(e2){ throw new Error('Impossibile leggere i dati dalla pagina.'); } }
+      else throw new Error('Nessun dato trovato nella pagina.');
+    }
+    // Precompila il form
+    document.getElementById('import-nome').value = parsed.nome||'';
+    document.getElementById('import-sku').value = parsed.sku||'';
+    document.getElementById('import-ean').value = parsed.ean||'';
+    document.getElementById('import-brand').value = parsed.brand||'';
+    document.getElementById('import-price').value = parsed.price||'';
+    document.getElementById('import-qty').value = '0';
+    document.getElementById('import-minqty').value = '1';
+    importEmoji = '📦';
+    document.querySelectorAll('#import-epick .eopt').forEach(e=>e.classList.toggle('on', e.dataset.e==='📦'));
+    showImportStep('result');
+  } catch(e){
+    showImportStep('error');
+    document.getElementById('import-err-msg').textContent = 'Errore: '+e.message;
+  }
+}
+
+function salvaImportUrl(){
+  const nome = (document.getElementById('import-nome').value||'').trim();
+  if(!nome){ toast('⚠️ Inserisci il nome'); return; }
+  const ean = (document.getElementById('import-ean').value||'').trim();
+  const skuField = (document.getElementById('import-sku').value||'').trim();
+  const id = 'ART'+Date.now();
+  const p = {
+    id,
+    sku: skuField || ('SKU-'+Math.random().toString(36).substr(2,5).toUpperCase()),
+    name: nome,
+    brand: (document.getElementById('import-brand').value||'').trim(),
+    category: '',
+    price: document.getElementById('import-price').value,
+    qty: parseInt(document.getElementById('import-qty').value)||0,
+    minQty: parseInt(document.getElementById('import-minqty').value)||1,
+    color: '', dims: '',
+    barcode: ean,
+    shopifyUrl: '',
+    emoji: importEmoji,
+    createdAt: new Date().toISOString()
+  };
+  products.push(p);
+  if(p.qty>0) addMov(p.id, p.name, p.qty, 'giacenza iniziale');
+  save(); renderStats(); renderList();
+  cm('m-import-url');
+  toast('✅ Articolo creato da URL');
 }
 
 // ═══════════════ DDT AI ═══════════════
