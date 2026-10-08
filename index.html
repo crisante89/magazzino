@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Magazzino">
@@ -599,7 +599,11 @@ function buildProdRowHtml(p){
     +'</div><span class="prod-chev">›</span></div>';
 }
 
-let _renderListTimer = null;
+// La lista viene disegnata a pezzi: disegnare 4.000+ righe blocca il telefono
+// e i tocchi sembrano "in ritardo". Con il limite l'app resta scattante.
+var _rlShown = 60;
+function showMoreProd(){ _rlShown += 120; renderList(); }
+function searchProd(){ _rlShown = 60; renderList(); }
 function renderList() {
   var q = (document.getElementById('srch').value||'').toLowerCase();
   var list = products.filter(function(p){
@@ -611,21 +615,13 @@ function renderList() {
   else if(curSort==='az')  list=list.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
   var el=document.getElementById('plist');
   if(!list.length){el.innerHTML='<div class="empty">Nessun articolo trovato.<br>Premi + per aggiungerne uno.</div>';return;}
-  var BATCH=20;
-  var token=(window._rlToken=(window._rlToken||0)+1); // invalida i lotti di un render precedente
-  el.innerHTML=list.slice(0,BATCH).map(buildProdRowHtml).join('');
-  if(list.length<=BATCH) return;
-  var idx=BATCH;
-  function next(){
-    if(token!==window._rlToken) return; // un nuovo render ha preso il sopravvento: fermati
-    if(idx>=list.length) return;
-    var tmp=document.createElement('div');
-    tmp.innerHTML=list.slice(idx,idx+BATCH).map(buildProdRowHtml).join('');
-    while(tmp.firstChild) el.appendChild(tmp.firstChild);
-    idx+=BATCH;
-    if(idx<list.length) requestAnimationFrame(next);
+  var n = Math.min(list.length, _rlShown);
+  var html = list.slice(0, n).map(buildProdRowHtml).join('');
+  if(list.length > n){
+    var min = Math.min(120, list.length - n);
+    html += '<button class="btn-s" style="margin:10px 0 0;" onclick="showMoreProd()">Mostra altri ' + min + ' articoli  (' + n + ' di ' + list.length + ')</button>';
   }
-  requestAnimationFrame(next);
+  el.innerHTML = html;
 }
 
 
@@ -2625,7 +2621,7 @@ if(window._fbReady){
   <div class="home-title">Magazzino Pro</div>
   <div class="home-sub">Sincronizzato su tutti i dispositivi ☁️</div>
   <button class="enter-btn" onclick="go('main');switchTab('inv')">Accedi al Magazzino</button>
-  <div style="font-size:11px;color:var(--t3);margin-top:16px;">versione <b>2026-10-08d</b></div>
+  <div style="font-size:11px;color:var(--t3);margin-top:16px;">versione <b>2026-10-08f</b></div>
   <div class="pwa-hint">
     📱 Safari → Condividi → Aggiungi a schermata Home<br>per usarla come app
   </div>
@@ -2690,7 +2686,7 @@ if(window._fbReady){
       <div class="stat"><div class="stat-lbl">Esauriti</div><div class="stat-val c-red" id="st-out">0</div></div>
     </div>
     <div class="search-box">
-      <input id="srch" placeholder="Cerca articolo o SKU..." oninput="renderList()">
+      <input id="srch" placeholder="Cerca articolo o SKU..." oninput="searchProd()">
       <span class="search-ico">🔍</span>
     </div>
     <div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;">
@@ -3217,7 +3213,7 @@ if(window._fbReady){
     </div>
 
     <button class="btn-s" style="margin-top:10px;" onclick="closePrezzi()">Chiudi</button>
-    <div style="font-size:10px;color:var(--t3);text-align:center;margin-top:10px;">versione 2026-10-08d</div>
+    <div style="font-size:10px;color:var(--t3);text-align:center;margin-top:10px;">versione 2026-10-08f</div>
   </div>
 </div>
 
