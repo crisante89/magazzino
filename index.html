@@ -1268,7 +1268,7 @@ function renderCassa(){
   }
   var t = cassaTotals();
   var subEl = document.getElementById('cassa-sub');
-  if(subEl) subEl.textContent = 'Subtotale  €' + t.sub.toFixed(2) + (t.pct > 0 ? '   ·   sconto ' + String(t.pct).replace('.', ',') + '%' : '');
+  if(subEl) subEl.textContent = 'Subtotale  €' + t.sub.toFixed(2);
   var totEl = document.getElementById('cassa-total');
   if(totEl) totEl.textContent = '€' + t.tot.toFixed(2);
 }
@@ -2764,18 +2764,12 @@ if(window._fbReady){
   <!-- TAB: scanner -->
   <div class="page" id="pg-scan" style="display:none;">
 
-    <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px;text-align:center;margin-bottom:12px;">
-      <div style="font-size:34px;margin-bottom:4px;">🔫</div>
-      <div style="font-size:15px;font-weight:700;">Passa la pistola sull'articolo</div>
-      <div style="font-size:12px;color:var(--t2);margin-top:3px;">Ogni lettura aggiunge l'articolo al conto (scarico)</div>
-    </div>
-
     <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:12px;margin-bottom:12px;">
       <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:8px;">✍️ Aggiungi a mano un articolo</div>
-      <input id="man-desc" type="text" placeholder="Descrizione" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;margin-bottom:8px;">
       <div style="display:flex;gap:8px;">
-        <input id="man-price" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Prezzo €" onkeydown="if(event.key==='Enter')cassaAddManual()" style="flex:1;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;">
-        <button class="btn-p" style="margin:0;padding:11px 16px;width:auto;" onclick="cassaAddManual()">＋ Aggiungi</button>
+        <input id="man-desc" type="text" placeholder="Descrizione" autocomplete="off" style="flex:2 1 0;min-width:0;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;">
+        <input id="man-price" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Prezzo €" onkeydown="if(event.key==='Enter')cassaAddManual()" style="flex:1 1 0;min-width:0;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;">
+        <button class="btn-p" style="margin:0;padding:11px 12px;width:auto;white-space:nowrap;flex:0 0 auto;" onclick="cassaAddManual()">＋ Aggiungi</button>
       </div>
     </div>
 
