@@ -1273,6 +1273,23 @@ function renderCassa(){
   if(totEl) totEl.textContent = '€' + t.tot.toFixed(2);
 }
 
+// Aggiunge a mano alla cassa un articolo fuori magazzino (descrizione + prezzo)
+function cassaAddManual(){
+  var d = document.getElementById('man-desc');
+  var pEl = document.getElementById('man-price');
+  var name = (d && d.value || '').trim();
+  var price = parseFloat(String(pEl && pEl.value || '').replace(',', '.'));
+  if(!name){ toast('⚠️ Scrivi la descrizione'); if(d) d.focus(); return; }
+  if(isNaN(price) || price < 0){ toast('⚠️ Inserisci un prezzo valido'); if(pEl) pEl.focus(); return; }
+  cart.push({ productId: null, name: name, emoji: '✍️', qty: 1, price: price });
+  updateCartFab();
+  renderCassa();
+  if(d) d.value = '';
+  if(pEl) pEl.value = '';
+  if(d) d.focus();
+  toast('🛒 ' + name + ' · €' + price.toFixed(2));
+}
+
 // Pulsantino "−": toglie 1 pezzo; a zero la riga sparisce
 function cassaMinus(i){
   if(!cart[i]) return;
@@ -2751,6 +2768,15 @@ if(window._fbReady){
       <div style="font-size:34px;margin-bottom:4px;">🔫</div>
       <div style="font-size:15px;font-weight:700;">Passa la pistola sull'articolo</div>
       <div style="font-size:12px;color:var(--t2);margin-top:3px;">Ogni lettura aggiunge l'articolo al conto (scarico)</div>
+    </div>
+
+    <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:12px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:8px;">✍️ Aggiungi a mano un articolo</div>
+      <input id="man-desc" type="text" placeholder="Descrizione" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;">
+        <input id="man-price" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Prezzo €" onkeydown="if(event.key==='Enter')cassaAddManual()" style="flex:1;box-sizing:border-box;padding:11px;border:1px solid var(--b1);border-radius:var(--rs);background:var(--s2);color:var(--t1);font-size:14px;">
+        <button class="btn-p" style="margin:0;padding:11px 16px;width:auto;" onclick="cassaAddManual()">＋ Aggiungi</button>
+      </div>
     </div>
 
     <div id="cassa-list"></div>
